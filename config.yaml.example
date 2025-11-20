@@ -1,0 +1,27 @@
+# Selection Protocol - Configuration
+# Copy this file to config.yaml and fill in your Twitch credentials
+
+twitch:
+  # Get these from https://dev.twitch.tv/console/apps
+  # Click "Manage" on your app to see Client ID and generate Client Secret
+  client_id: "your_client_id_here"
+  client_secret: "your_client_secret_here"
+
+  # Your Twitch channel name (lowercase)
+  channel: "your_channel_name"
+
+  # Bot username (can be your main account or separate bot account)
+  nick: "your_bot_username"
+
+voting:
+  # Vote cycle duration in seconds
+  cycle_duration: 60
+
+  # Tie-break window duration in seconds
+  tiebreak_duration: 10
+
+  # Allow users to change votes during voting window
+  allow_vote_changes: true
+
+  # Default action when no votes (k/l/x)
+  default_on_empty: "x"

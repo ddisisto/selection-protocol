@@ -24,5 +24,6 @@ Thumbs.db
 *.tmp
 
 # Config (may contain secrets)
+config.yaml
 config.local.yaml
 .env
