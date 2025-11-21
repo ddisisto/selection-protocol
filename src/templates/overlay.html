@@ -1,0 +1,39 @@
+<!-- Overlay Wrapper - Right Side (visible in OBS) -->
+<div class="overlay-wrapper">
+    <div class="title">SELECTION PROTOCOL</div>
+
+    <div class="overlay-container">
+        <div class="main-layout">
+            <div class="pie-chart-container">
+                <canvas id="pieChart" width="140" height="140"></canvas>
+                <div class="timer-display" id="time-remaining">30s</div>
+            </div>
+
+            <div class="right-section">
+                <div class="votes-container">
+                    <div class="vote-item k">
+                        <div class="vote-header">
+                            <span class="vote-label k">K: Kill</span>
+                            <span class="vote-number k" id="k-count">0</span>
+                        </div>
+                        <div class="vote-bar-container">
+                            <div class="vote-bar k" id="k-bar" style="width: 50%"></div>
+                        </div>
+                    </div>
+
+                    <div class="vote-item l">
+                        <div class="vote-header">
+                            <span class="vote-label l">L: Lay</span>
+                            <span class="vote-number l" id="l-count">0</span>
+                        </div>
+                        <div class="vote-bar-container">
+                            <div class="vote-bar l" id="l-bar" style="width: 50%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="status" id="status">Waiting for votes...</div>
+            </div>
+        </div>
+    </div>
+</div>

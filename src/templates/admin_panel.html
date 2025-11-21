@@ -1,0 +1,75 @@
+<!-- Admin Panel - Left Side -->
+<div class="admin-panel">
+    <!-- Game Actions -->
+    <div class="admin-section">
+        <div class="admin-section-title">Game Actions (15s shared)</div>
+        <button class="admin-btn kill" id="btn-kill" onclick="sendKeypress('Delete', 'primary')">
+            [Delete] KILL
+            <span class="cooldown-overlay" id="cd-kill" style="display: none;"></span>
+        </button>
+        <button class="admin-btn lay" id="btn-lay" onclick="sendKeypress('Insert', 'primary')">
+            [Ins] LAY
+            <span class="cooldown-overlay" id="cd-lay" style="display: none;"></span>
+        </button>
+        <button class="admin-btn extend" id="btn-extend" onclick="sendKeypress('x', 'extend')">
+            [x] EXTEND (30s)
+            <span class="cooldown-overlay" id="cd-extend" style="display: none;"></span>
+        </button>
+        <div class="status-line">
+            <span class="status-label">Cooldown:</span>
+            <span class="status-value" id="primary-cooldown">Ready</span>
+        </div>
+    </div>
+
+    <!-- Camera Controls -->
+    <div class="admin-section">
+        <div class="admin-section-title">Camera (10s shared)</div>
+        <button class="admin-btn camera" id="btn-cam-gen" onclick="sendKeypress('ctrl+g', 'camera')">[Ctrl+G] Generation</button>
+        <button class="admin-btn camera" id="btn-cam-old" onclick="sendKeypress('ctrl+o', 'camera')">[Ctrl+O] Oldest</button>
+        <button class="admin-btn camera" id="btn-cam-rand" onclick="sendKeypress('ctrl+r', 'camera')">[Ctrl+R] Random</button>
+        <div class="status-line">
+            <span class="status-label">Mode:</span>
+            <span class="status-value" id="camera-mode">Unknown</span>
+        </div>
+    </div>
+
+    <!-- Zoom Controls -->
+    <div class="admin-section">
+        <div class="admin-section-title">Zoom (5s individual)</div>
+        <button class="admin-btn camera" id="btn-zoom-in" onclick="sendKeypress('KP_Add', 'zoom_in')">
+            [KP+] Zoom In
+            <span class="cooldown-overlay" id="cd-zoom-in" style="display: none;"></span>
+        </button>
+        <button class="admin-btn camera" id="btn-zoom-out" onclick="sendKeypress('KP_Subtract', 'zoom_out')">
+            [KP-] Zoom Out
+            <span class="cooldown-overlay" id="cd-zoom-out" style="display: none;"></span>
+        </button>
+    </div>
+
+    <!-- Timer Controls -->
+    <div class="admin-section">
+        <div class="admin-section-title">Timer (demo/testing)</div>
+        <div class="vote-display">
+            <span class="vote-label">Time:</span>
+            <span class="vote-count" id="admin-timer">30s</span>
+        </div>
+        <div class="timer-controls">
+            <button class="admin-btn small" onclick="adminPauseTimer()">Pause</button>
+            <button class="admin-btn small" onclick="adminResumeTimer()">Resume</button>
+        </div>
+        <button class="admin-btn" onclick="adminResetTimer()">Reset</button>
+    </div>
+
+    <!-- System Status -->
+    <div class="admin-section">
+        <div class="admin-section-title">Status</div>
+        <div class="status-line">
+            <span class="status-label">Clients:</span>
+            <span class="status-value connected" id="client-count">0</span>
+        </div>
+        <div class="status-line">
+            <span class="status-label">Last:</span>
+            <span class="status-value" id="last-action-display">None</span>
+        </div>
+    </div>
+</div>

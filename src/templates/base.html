@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Selection Protocol{% endblock %}</title>
+    <meta charset="utf-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000000;
+            font-family: monospace, 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            {% block body_style %}
+            display: flex;
+            flex-direction: row;
+            {% endblock %}
+        }
+
+        /* Admin Panel - Left Side */
+        .admin-panel {
+            width: 300px;
+            height: 100vh;
+            background: #1a1a1a;
+            border-right: 3px solid #00ff88;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .admin-section {
+            border-bottom: 1px solid #333;
+            padding: 15px;
+        }
+
+        .admin-section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff88;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #00ff88;
+            padding-bottom: 5px;
+        }
+
+        .admin-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 2px solid;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            color: white;
+            background: #333;
+            position: relative;
+        }
+
+        .admin-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            filter: brightness(1.2);
+        }
+
+        .admin-btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .admin-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: #222;
+        }
+
+        .cooldown-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #ff6666;
+            pointer-events: none;
+        }
+
+        .admin-btn.kill {
+            background: #cc0000;
+            border-color: #ff3333;
+        }
+
+        .admin-btn.lay {
+            background: #0033cc;
+            border-color: #3366ff;
+        }
+
+        .admin-btn.extend {
+            background: #ccaa00;
+            border-color: #ffdd33;
+            color: #000;
+        }
+
+        .admin-btn.camera {
+            background: #555;
+            border-color: #888;
+            font-size: 12px;
+            padding: 10px;
+        }
+
+        .admin-btn.small {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .vote-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .vote-display {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .vote-label {
+            font-weight: bold;
+            color: #aaa;
+        }
+
+        .vote-count {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .vote-count.k {
+            color: #ff6666;
+        }
+
+        .vote-count.l {
+            color: #6666ff;
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .timer-controls .admin-btn {
+            margin-bottom: 0;
+        }
+
+        .status-line {
+            display: flex;
+            justify-content: space-between;
+            background: #2a2a2a;
+            padding: 8px 10px;
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .status-label {
+            color: #888;
+        }
+
+        .status-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .status-value.connected {
+            color: #00ff88;
+        }
+
+        .status-value.disconnected {
+            color: #ff3333;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: #2a2a2a;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: white;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-row:hover {
+            background: #2a2a2a;
+        }
+
+        .log-container {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-size: 11px;
+            font-family: monospace;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            color: #aaa;
+        }
+
+        .log-entry:first-child {
+            color: #00ff88;
+        }
+
+        /* Overlay Container - Right Side */
+        .overlay-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #000000;
+        }
+
+        .title {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 900;
+            height: 120px;
+            padding: 0 40px 12px 40px;
+            color: white;
+            background: #808080;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+        }
+
+        .overlay-container {
+            margin-top: auto;
+            background: #000000;
+            border: none;
+            border-radius: 15px;
+            padding: 20px 25px;
+            margin-left: 20px;
+            margin-right: 20px;
+            margin-bottom: 20px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .pie-chart-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            max-width: 140px;
+            max-height: 140px;
+            border: 3px solid #00ff88;
+            border-radius: 50%;
+            transition: border-color 0.3s ease;
+        }
+
+        .right-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .timer-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 54px;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+            line-height: 1;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .votes-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .vote-item {
+            background: #000000;
+            border-radius: 8px;
+            padding: 12px;
+            border: 2px solid transparent;
+            transition: border-color 0.3s ease;
+        }
+
+        .vote-item.k {
+            border-color: #ff6666;
+        }
+
+        .vote-item.i {
+            border-color: #6666ff;
+        }
+
+        .vote-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .vote-label {
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .vote-label.k {
+            color: #ff9999;
+        }
+
+        .vote-label.i {
+            color: #9999ff;
+        }
+
+        .vote-number {
+            font-size: 36px;
+            font-weight: bold;
+            position: relative;
+            display: inline-block;
+        }
+
+        .vote-number.k {
+            color: #ff9999;
+        }
+
+        .vote-number.i {
+            color: #9999ff;
+        }
+
+        @keyframes vote-increment {
+            0% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+            50% {
+                transform: scale(1.2);
+                filter: brightness(1.5);
+            }
+            100% {
+                transform: scale(1);
+                filter: brightness(1);
+            }
+        }
+
+        .vote-number.animate {
+            animation: vote-increment 0.4s ease;
+        }
+
+        .vote-bar-container {
+            height: 12px;
+            background: #333333;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .vote-bar {
+            height: 100%;
+            transition: width 0.4s ease;
+            border-radius: 6px;
+        }
+
+        .vote-bar.k {
+            background: linear-gradient(90deg, #ff6666, #ff9999);
+        }
+
+        .vote-bar.i {
+            background: linear-gradient(90deg, #6666ff, #9999ff);
+        }
+
+        .status {
+            text-align: center;
+            font-size: 18px;
+            color: white;
+            background: #333333;
+            text-shadow: 2px 2px 4px #00FFFF;
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    {% block content %}{% endblock %}
+
+    <script>
+        const socket = io();
+
+        {% block scripts %}{% endblock %}
+    </script>
+</body>
+</html>

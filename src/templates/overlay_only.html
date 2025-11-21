@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Selection Protocol - Overlay{% endblock %}
+
+{% block body_style %}
+display: block;
+{% endblock %}
+
+{% block content %}
+{% include "overlay.html" %}
+{% endblock %}
+
+{% block scripts %}
+const canvas = document.getElementById('pieChart');
+const ctx = canvas.getContext('2d');
+let currentTime = 30;
+
+// Countdown timer
+setInterval(() => {
+    currentTime--;
+    if (currentTime < 0) {
+        currentTime = 30; // Reset to 30 when it hits 0
+    }
+    updateTimerDisplay();
+}, 1000);
+
+function getTimerColor(seconds) {
+    if (seconds >= 16) {
+        return '#00ff88'; // Green
+    } else if (seconds >= 1) {
+        // Linear gradient from green → yellow → red
+        // Convert to HSL for smooth interpolation
+        // Green: hsl(158, 100%, 50%)
+        // Red: hsl(0, 100%, 50%)
+        const progress = (15 - seconds) / 14; // 0 to 1 as time decreases from 15 to 1
+        const hue = 158 - (158 * progress); // 158 → 0
+        return `hsl(${hue}, 100%, 50%)`;
+    } else {
+        return '#ff0000'; // Bright red at 0
+    }
+}
+
+function updateTimerDisplay() {
+    const timerEl = document.getElementById('time-remaining');
+    timerEl.textContent = currentTime + 's';
+    timerEl.style.color = getTimerColor(currentTime);
+    timerEl.style.textShadow = `0 0 20px ${getTimerColor(currentTime)}80`;
+}
+
+function getBorderColor(kVotes, iVotes) {
+    const total = kVotes + iVotes;
+    if (total === 0) {
+        return '#00ff88'; // Green when no votes
+    }
+
+    const kRatio = kVotes / total;
+    const iRatio = iVotes / total;
+
+    if (Math.abs(kRatio - iRatio) < 0.01) {
+        return '#00ff88'; // Green when tied
+    }
+
+    // Interpolate between green and red/blue based on vote ratio
+    if (kRatio > iRatio) {
+        // K is winning, trend toward red
+        const redWeight = (kRatio - 0.5) * 2; // 0 to 1 as K dominates
+        const r = Math.round(0 + redWeight * 255);
+        const g = Math.round(255 - redWeight * 153);
+        const b = Math.round(136 - redWeight * 34);
+        return `rgb(${r}, ${g}, ${b})`;
+    } else {
+        // I is winning, trend toward blue
+        const blueWeight = (iRatio - 0.5) * 2; // 0 to 1 as I dominates
+        const r = Math.round(0 + blueWeight * 102);
+        const g = Math.round(255 - blueWeight * 153);
+        const b = Math.round(136 + blueWeight * 119);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+}
+
+function updateCanvasBorder(kVotes, iVotes) {
+    canvas.style.borderColor = getBorderColor(kVotes, iVotes);
+}
+
+function drawPieChart(kVotes, iVotes) {
+    const total = kVotes + iVotes;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const radius = 60;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (total === 0) {
+        // Draw empty circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#333333';
+        ctx.fill();
+        return;
+    }
+
+    const kAngle = (kVotes / total) * 2 * Math.PI;
+    const iAngle = (iVotes / total) * 2 * Math.PI;
+
+    // Draw K slice (red)
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + kAngle);
+    ctx.closePath();
+    ctx.fillStyle = '#ff6666';
+    ctx.fill();
+
+    // Draw I slice (blue)
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, -Math.PI / 2 + kAngle, -Math.PI / 2 + kAngle + iAngle);
+    ctx.closePath();
+    ctx.fillStyle = '#6666ff';
+    ctx.fill();
+
+    // Update border color based on votes
+    updateCanvasBorder(kVotes, iVotes);
+}
+
+socket.on('connect', function() {
+    console.log('Connected to overlay server');
+});
+
+let lastKVotes = 0;
+let lastLVotes = 0;
+
+socket.on('vote_update', function(data) {
+    console.log('Vote update:', data);
+
+    // Update vote counts with animation
+    const kCountEl = document.getElementById('k-count');
+    const lCountEl = document.getElementById('l-count');
+
+    if (data.k_votes !== lastKVotes) {
+        kCountEl.classList.remove('animate');
+        void kCountEl.offsetWidth; // Force reflow
+        kCountEl.classList.add('animate');
+        lastKVotes = data.k_votes;
+    }
+
+    if (data.l_votes !== lastLVotes) {
+        lCountEl.classList.remove('animate');
+        void lCountEl.offsetWidth; // Force reflow
+        lCountEl.classList.add('animate');
+        lastLVotes = data.l_votes;
+    }
+
+    kCountEl.textContent = data.k_votes;
+    lCountEl.textContent = data.l_votes;
+
+    // Calculate percentages
+    const total = data.k_votes + data.l_votes;
+    let kPercent = 50;
+    let lPercent = 50;
+
+    if (total > 0) {
+        kPercent = (data.k_votes / total) * 100;
+        lPercent = (data.l_votes / total) * 100;
+    }
+
+    // Update bars
+    document.getElementById('k-bar').style.width = kPercent + '%';
+    document.getElementById('l-bar').style.width = lPercent + '%';
+
+    // Update pie chart
+    drawPieChart(data.k_votes, data.l_votes);
+
+    // Update timer
+    document.getElementById('time-remaining').textContent = data.time_remaining + 's';
+
+    // Update status
+    const statusEl = document.getElementById('status');
+    if (data.voting_active) {
+        statusEl.textContent = 'Chat decides fate (NOT YET LIVE). Features coming: KILL, REPRODUCE, change target, zoom, change/show/hide info overlay panels';
+    } else {
+        statusEl.textContent = 'Waiting for next vote...';
+    }
+});
+
+// Initial draw
+drawPieChart(0, 0);
+updateTimerDisplay();
+{% endblock %}

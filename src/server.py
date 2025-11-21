@@ -10,11 +10,10 @@ Full-page layout with black background (#000000) for clean compositing.
 Includes left-side admin control panel for testing and game automation.
 """
 
-from flask import Flask, render_template_string
+from flask import Flask, render_template
 from flask_socketio import SocketIO
 from datetime import datetime
 
-from .overlay import OVERLAY_TEMPLATE
 from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
 
@@ -61,9 +60,21 @@ broadcast_states = setup_socketio_handlers(socketio, vote_state, admin_state, lo
 
 
 @app.route('/')
+def index():
+    """Serve the combined admin + overlay page."""
+    return render_template('index.html')
+
+
+@app.route('/admin')
+def admin():
+    """Serve the admin panel only (for split deployment)."""
+    return render_template('admin_only.html')
+
+
+@app.route('/overlay')
 def overlay():
-    """Serve the overlay HTML page."""
-    return render_template_string(OVERLAY_TEMPLATE)
+    """Serve the overlay only (for OBS Browser Source)."""
+    return render_template('overlay_only.html')
 
 
 # Bot integration endpoints
