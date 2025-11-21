@@ -156,16 +156,12 @@ class SelectionBot(commands.AutoBot):
         self.messages_received += 1
 
         # Check if this is our startup message reflected back
-        if not self.startup_message_verified and "Selection Protocol online" in text and username.lower() == self._bot_username:
+        if not self.startup_message_verified and "Selection Protocol online" in text:
             self.startup_message_verified = True
             print(f"✓ Startup message verified (end-to-end chat confirmed)")
             return  # Don't log our own startup message
 
-        # Log ALL chat messages (except our own)
-        # Note: EventSub doesn't filter bot's own messages like IRC did
-        if username.lower() == self._bot_username:
-            return  # Skip bot's own messages
-
+        # Log ALL chat messages
         print(f"[{timestamp}] {username}: {text}")
 
         # Parse vote commands
