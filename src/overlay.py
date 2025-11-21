@@ -20,7 +20,7 @@ OVERLAY_TEMPLATE = """
 
         body {
             background: #000000;
-            font-family: 'Arial', sans-serif;
+            font-family: monospace, 'Arial', sans-serif;
             color: white;
             overflow: hidden;
             width: 100vw;
@@ -727,7 +727,7 @@ OVERLAY_TEMPLATE = """
             // Update status
             const statusEl = document.getElementById('status');
             if (data.voting_active) {
-                statusEl.textContent = 'Vote now in chat! (*NOT YET LIVE*, PROTOTYPING OVERLAY ONLY, for now...). Features coming: change target, zoom, show/hide info overlays, kill, lay';
+                statusEl.textContent = 'Chat decides fate (NOT YET LIVE). Features coming: KILL, REPRODUCE, change target, zoom, change/show/hide info overlay panels';
             } else {
                 statusEl.textContent = 'Waiting for next vote...';
             }
