@@ -38,21 +38,71 @@
 - Technical debt catalogued by phase in archived handover
 - Overall assessment: 7.5/10, no critical issues
 
-### Next Steps (Pending Discussion)
-- Design vote display layout
-- Implement HTML/CSS/JS for vote counts
-- Wire up vote_update SocketIO events
-- Test end-to-end
+### Overlay Refactoring Plan (Session 4)
+
+**Problem Identified:**
+- `src/overlay.py` is 869 lines (monolith template string)
+- Has broken K/L vote display (uses old 'i' naming, missing X votes)
+- Not connected to vote_manager broadcasts
+- Admin panel + overlay mixed together (will need separate routes eventually)
+
+**Solution: Extract Flask Templates**
+
+**Phase 1: Split without breaking (30-45 min)**
+- Create `src/templates/` directory
+- Split into 4 files:
+  - `base.html` - DOCTYPE, head, SocketIO, shared CSS/JS
+  - `admin_panel.html` - Left panel (working, keep as-is)
+  - `overlay.html` - Right panel (needs fixes)
+  - `index.html` - Wrapper combining both
+- Update `server.py` to use `render_template()` instead of `render_template_string()`
+- Test: Should look/work exactly the same
+
+**Phase 2: Fix overlay display (30 min)**
+- Update JavaScript to listen for `vote_update` SocketIO events
+- Fix naming: i_votes → l_votes (K/L/X)
+- Add X votes display
+- Remove hardcoded 30s timer, use real data from vote_manager
+- Test: Type "k/l/x" in chat → overlay updates
+
+**Phase 3: Prepare for future (15 min)**
+- Add `/admin` route (admin panel only)
+- Add `/overlay` route (overlay only)
+- Keep `/` as combined view
+- Document: "Ready to split when streaming"
+
+**Total estimate:** ~90 minutes for complete refactor + functional overlay
+
+**Keep unchanged:**
+- SocketIO for bot→server and server→overlay (real-time broadcasts)
+- TwitchIO bot (unaffected)
+- Vote manager (working perfectly)
+
+---
+
+## Session 3 Summary
+
+**Completed:**
+- ✅ Documentation consolidation (reduced onboarding burden)
+- ✅ Code review (identified 869-line overlay.py issue)
+- ✅ Quick wins (fixed bare except clauses)
+- ✅ Refactoring plan designed and documented
+
+**Not Started:**
+- ❌ Overlay refactoring (planned for Session 4)
+- ❌ Vote display implementation (blocked by refactor)
+
+**Key Insight:**
+Overlay.py has broken K/L display from Session 1 port. Needs proper Flask template refactor before wiring up vote_manager events.
+
+**Ready for Session 4:**
+Clean handover with detailed refactoring plan. Context debt reduction should make template extraction straightforward.
 
 ---
 
 ## For Next Session
 
-When this session ends, document here:
-- What got implemented
-- Any gotchas discovered
-- Testing notes
-- Specific handover instructions
+Start with overlay refactoring (Phase 1-3 plan above). Estimated 90 minutes to complete Phase 1 (vote display working).
 
 ---
 
