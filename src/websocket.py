@@ -25,13 +25,9 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
     """
 
     def broadcast_states():
-        """Broadcast both vote and admin states to all clients."""
-        socketio.emit('vote_update', vote_state)
-        socketio.emit('admin_state_update', {
-            **admin_state,
-            'k_votes': vote_state['k_votes'],
-            'l_votes': vote_state['l_votes']
-        })
+        """Broadcast admin state to all clients."""
+        # Note: vote_manager handles vote_update broadcasts directly
+        socketio.emit('admin_state_update', admin_state)
 
     @socketio.on('connect')
     def handle_connect():
@@ -41,12 +37,8 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
         log_action("Client connected", f"Total: {admin_state['connected_clients']}")
 
         # Send current states to newly connected client
-        emit('vote_update', vote_state)
-        emit('admin_state_update', {
-            **admin_state,
-            'k_votes': vote_state['k_votes'],
-            'l_votes': vote_state['l_votes']
-        })
+        # Note: vote_state is deprecated, using empty dict for backward compat
+        emit('admin_state_update', admin_state)
         emit('cooldown_update', get_cooldown_state_dict())
 
     @socketio.on('disconnect')

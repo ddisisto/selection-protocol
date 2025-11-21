@@ -8,9 +8,11 @@ Passes vote data to the vote manager for tracking and resolution.
 
 import asyncio
 import requests
+import socketio
 from twitchio.ext import commands
 from twitchio import eventsub, eventsub_
 from datetime import datetime
+import sys
 
 
 class SelectionBot(commands.AutoBot):
@@ -23,7 +25,7 @@ class SelectionBot(commands.AutoBot):
     - x: Extend, keep watching (do nothing)
     """
 
-    def __init__(self, client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, vote_manager=None):
+    def __init__(self, client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, flask_url="http://localhost:5000"):
         """
         Initialize the TwitchIO EventSub bot.
 
@@ -35,7 +37,7 @@ class SelectionBot(commands.AutoBot):
             channel_id: Channel ID (numeric) to monitor chat in
             access_token: User access token for sending messages
             bot_username: Bot's Twitch username (for filtering own messages)
-            vote_manager: VoteManager instance to receive votes (None for testing)
+            flask_url: Flask server URL for SocketIO connection
         """
         # Initialize with EventSub support
         super().__init__(
@@ -46,7 +48,6 @@ class SelectionBot(commands.AutoBot):
             prefix='!',  # For future commands like !lineage
             force_subscribe=True,  # Auto-subscribe to EventSub events
         )
-        self.vote_manager = vote_manager
         self.channel_id = channel_id
         self.start_time = datetime.now()
         self.votes_received = 0
@@ -56,6 +57,56 @@ class SelectionBot(commands.AutoBot):
         self._client_id = client_id
         self._access_token = access_token
         self._bot_username = bot_username.lower()
+        self._flask_url = flask_url
+
+        # SocketIO client (will be initialized in connect_to_flask)
+        self.sio = None
+        self.valid_actions = set()
+
+    async def connect_to_flask(self):
+        """
+        Connect to Flask server via SocketIO and fetch enabled actions.
+
+        This MUST succeed before connecting to Twitch.
+        Exits immediately if connection fails.
+        """
+        print("=" * 60)
+        print("Connecting to Flask server...")
+        print("=" * 60)
+
+        try:
+            # Create async SocketIO client
+            self.sio = socketio.AsyncClient()
+
+            # Connect to Flask
+            print(f"Connecting to {self._flask_url}...")
+            await self.sio.connect(self._flask_url)
+            print("✓ Connected to Flask server")
+
+            # Fetch enabled actions
+            print("Fetching enabled actions...")
+            actions = await self.sio.call('get_actions', timeout=5)
+            self.valid_actions = set(actions)
+            print(f"✓ Loaded {len(self.valid_actions)} valid actions: {sorted(self.valid_actions)}")
+
+            # Send bot connection status
+            await self.sio.emit('bot_connected', {
+                'bot_id': self.bot_id,
+                'bot_username': self._bot_username,
+                'timestamp': datetime.now().isoformat()
+            })
+            print("✓ Bot status sent to Flask")
+
+            print("=" * 60)
+            return True
+
+        except Exception as e:
+            print(f"\n✗ FATAL: Failed to connect to Flask server")
+            print(f"  Error: {e}")
+            print(f"  Make sure Flask server is running at {self._flask_url}")
+            print(f"  Start it with: python -m src.server")
+            print("=" * 60)
+            sys.exit(1)
 
     async def event_ready(self):
         """Called when bot connects to Twitch EventSub."""
@@ -121,17 +172,21 @@ class SelectionBot(commands.AutoBot):
         text_lower = text.lower().strip()
 
         # Check if message is a valid vote command
-        if text_lower in ['k', 'l', 'x']:
+        if text_lower in self.valid_actions:
             self.votes_received += 1
 
             # Log vote (highlighted)
             print(f"  → VOTE: {text_lower.upper()}")
 
-            # Pass to vote manager (if connected)
-            if self.vote_manager:
-                self.vote_manager.cast_vote(username, text_lower, datetime.now())
-            else:
-                print(f"  → No vote manager connected (skeleton mode)")
+            # Send vote to Flask via SocketIO
+            try:
+                await self.sio.emit('vote_cast', {
+                    'username': username,
+                    'vote': text_lower,
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                print(f"  ⚠ Failed to send vote to Flask: {e}")
 
     async def event_error(self, error, data=None):
         """Handle bot errors - print details and crash."""
@@ -249,9 +304,16 @@ def get_user_id(username, client_id, token):
     return data["data"][0]["id"]
 
 
-async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, vote_manager=None):
+async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, flask_url="http://localhost:5000"):
     """
     Run the Twitch EventSub bot.
+
+    Startup sequence:
+    1. Connect to Flask (exit if fail)
+    2. Fetch enabled actions (exit if fail)
+    3. Connect to Twitch EventSub (exit if fail)
+    4. Report readiness
+    5. Announce to chat
 
     Args:
         client_id: Application client ID
@@ -261,9 +323,14 @@ async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, access
         channel_id: Channel ID (numeric) to monitor
         access_token: User access token for sending messages
         bot_username: Bot's Twitch username
-        vote_manager: VoteManager instance (optional)
+        flask_url: Flask server URL
     """
-    bot = SelectionBot(client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, vote_manager)
+    bot = SelectionBot(client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, flask_url)
+
+    # Step 1: Connect to Flask (MUST succeed)
+    await bot.connect_to_flask()
+
+    # Step 2: Connect to Twitch EventSub
     await bot.start()
 
 
@@ -347,7 +414,7 @@ if __name__ == '__main__':
             print(f"\nTest mode: Will run for 30 seconds then exit")
         print(f"\nType k, l, or x in chat to test command parsing\n")
 
-        # Run bot without vote manager
+        # Run bot
         if test_mode:
             # Test mode: run for 30s then exit cleanly
             async def run_test():
@@ -359,9 +426,13 @@ if __name__ == '__main__':
                     channel_id,
                     token,
                     twitch_config['nick'],
-                    None
+                    'http://localhost:5000'
                 )
-                # Start bot in background
+
+                # Step 1: Connect to Flask (MUST succeed)
+                await bot.connect_to_flask()
+
+                # Step 2: Start Twitch bot in background
                 bot_task = asyncio.create_task(bot.start())
 
                 # Wait 30 seconds
@@ -372,6 +443,8 @@ if __name__ == '__main__':
                 print("Test complete! Shutting down...")
                 print(f"{'='*60}\n")
                 await bot.close()
+                if bot.sio:
+                    await bot.sio.disconnect()
                 bot_task.cancel()
 
             asyncio.run(run_test())
@@ -385,7 +458,7 @@ if __name__ == '__main__':
                 channel_id=channel_id,
                 access_token=token,
                 bot_username=twitch_config['nick'],
-                vote_manager=None
+                flask_url='http://localhost:5000'
             ))
     except Exception as e:
         print(f"✗ Failed to initialize bot: {e}")

@@ -80,6 +80,25 @@ def handle_get_actions():
     return actions
 
 
+@socketio.on('bot_connected')
+def handle_bot_connected(data):
+    """
+    Handle bot connection status.
+
+    Args:
+        data: {bot_id: str, bot_username: str, timestamp: str}
+    """
+    bot_username = data.get('bot_username')
+    timestamp = data.get('timestamp')
+
+    admin_state['twitch_bot_active'] = True
+    log_action("Twitch bot connected", f"@{bot_username}")
+    print(f"\n{'='*60}")
+    print(f"✓ Twitch bot connected: @{bot_username}")
+    print(f"  Ready to receive votes from chat")
+    print(f"{'='*60}\n")
+
+
 @socketio.on('vote_cast')
 def handle_vote_cast(data):
     """
