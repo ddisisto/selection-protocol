@@ -1,7 +1,7 @@
 # Selection Protocol - Project Brief
 
-**Status:** Live infrastructure operational, awaiting Twitch chat integration
-**Date:** 2025-11-20
+**Status:** Phase 1 nearly complete (5/6 done - overlay display needed)
+**Date:** 2025-11-21 (updated Session 3)
 
 ---
 
@@ -20,31 +20,38 @@ Chat votes every ~60 seconds on three actions for the currently auto-followed bi
 
 ## Current State (What Exists)
 
-### ✅ Live Infrastructure
+### ✅ Operational Infrastructure
 - **The Bibites** simulation running via Steam/Proton (PID 1377474, Window ID 132120577)
-- **Overlay system** with full-page black background (OBS "lighten" blend mode)
+- **Flask overlay server** with full-page black background (OBS "lighten" blend mode)
 - **Admin control panel** (left sidebar, 300px, cropped from stream)
   - Game actions: Delete (Kill), Insert (Lay), x (Extend)
   - Camera modes: Ctrl+G (Generation), Ctrl+O (Oldest), Ctrl+R (Random)
   - Zoom: KP+ / KP- (keypad plus/minus)
-  - Timer controls, status display
+  - Timer controls, status display, bot connection indicator
 - **Auto-follow camera** (currently: random mode, switchable)
 - **Cooldown system** operational:
   - Primary actions (Del/Ins): 15s shared cooldown
   - Camera: 10s shared cooldown
   - Zoom: 5s individual cooldowns
   - Extend: 30s cooldown
-- **WebSocket state sync** (overlay ↔ admin panel)
+- **WebSocket state sync** (overlay ↔ admin panel ↔ bot)
 - **xdotool keypress automation** working perfectly
-- **Twitch stream** live (awaiting viewers)
+- **TwitchIO EventSub bot** receiving chat messages (replaces deprecated IRC)
+- **OAuth authorization flow** with token caching and auto-refresh
+- **Action registry** (extensible DRY system for k/l/x commands)
+- **Vote manager** tracking votes + first-L claimant logic
+- **End-to-end vote flow** operational (chat → bot → Flask → vote_manager)
 
-### ❌ Missing Components
-- Twitch IRC bot (TwitchIO)
-- Vote counting system
+### ❌ Missing Components (Phase 1)
+- **Vote display in overlay** (data broadcasts work, HTML needs update)
+
+### 📅 Planned (Phase 2+)
 - Automated vote resolution → keypress execution
-- Lineage tagging system
-- Vote display in overlay
+- Vote cycle timer (60s cycles with countdown)
+- Tie-break window (10s after tie detected)
+- Lineage tagging system (username → game tag before Insert)
 - Chat commands (!lineage, !stats)
+- Vote history persistence (SQLite)
 
 ---
 
