@@ -47,43 +47,38 @@ function updateTimerDisplay() {
     timerEl.style.textShadow = `0 0 20px ${getTimerColor(currentTime)}80`;
 }
 
-function getBorderColor(kVotes, iVotes) {
-    const total = kVotes + iVotes;
+function getBorderColor(kVotes, lVotes, xVotes) {
+    const total = kVotes + lVotes + xVotes;
     if (total === 0) {
         return '#00ff88'; // Green when no votes
     }
 
-    const kRatio = kVotes / total;
-    const iRatio = iVotes / total;
+    // Find which vote is winning
+    const max = Math.max(kVotes, lVotes, xVotes);
 
-    if (Math.abs(kRatio - iRatio) < 0.01) {
+    // Check for tie
+    const winners = [
+        kVotes === max ? 'k' : null,
+        lVotes === max ? 'l' : null,
+        xVotes === max ? 'x' : null
+    ].filter(v => v !== null);
+
+    if (winners.length > 1) {
         return '#00ff88'; // Green when tied
     }
 
-    // Interpolate between green and red/blue based on vote ratio
-    if (kRatio > iRatio) {
-        // K is winning, trend toward red
-        const redWeight = (kRatio - 0.5) * 2; // 0 to 1 as K dominates
-        const r = Math.round(0 + redWeight * 255);
-        const g = Math.round(255 - redWeight * 153);
-        const b = Math.round(136 - redWeight * 34);
-        return `rgb(${r}, ${g}, ${b})`;
-    } else {
-        // I is winning, trend toward blue
-        const blueWeight = (iRatio - 0.5) * 2; // 0 to 1 as I dominates
-        const r = Math.round(0 + blueWeight * 102);
-        const g = Math.round(255 - blueWeight * 153);
-        const b = Math.round(136 + blueWeight * 119);
-        return `rgb(${r}, ${g}, ${b})`;
-    }
+    // Color based on winner
+    if (kVotes === max) return '#ff6666'; // Red for K
+    if (lVotes === max) return '#6666ff'; // Blue for L
+    if (xVotes === max) return '#00ff88'; // Green for X
 }
 
-function updateCanvasBorder(kVotes, iVotes) {
-    canvas.style.borderColor = getBorderColor(kVotes, iVotes);
+function updateCanvasBorder(kVotes, lVotes, xVotes) {
+    canvas.style.borderColor = getBorderColor(kVotes, lVotes, xVotes);
 }
 
-function drawPieChart(kVotes, iVotes) {
-    const total = kVotes + iVotes;
+function drawPieChart(kVotes, lVotes, xVotes) {
+    const total = kVotes + lVotes + xVotes;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const radius = 60;
@@ -100,27 +95,47 @@ function drawPieChart(kVotes, iVotes) {
         return;
     }
 
+    // Calculate angles (clockwise from 12 o'clock: L, X, K)
+    const lAngle = (lVotes / total) * 2 * Math.PI;
+    const xAngle = (xVotes / total) * 2 * Math.PI;
     const kAngle = (kVotes / total) * 2 * Math.PI;
-    const iAngle = (iVotes / total) * 2 * Math.PI;
+
+    let currentAngle = -Math.PI / 2; // Start at 12 o'clock
+
+    // Draw L slice (blue)
+    if (lVotes > 0) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + lAngle);
+        ctx.closePath();
+        ctx.fillStyle = '#6666ff';
+        ctx.fill();
+        currentAngle += lAngle;
+    }
+
+    // Draw X slice (green)
+    if (xVotes > 0) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + xAngle);
+        ctx.closePath();
+        ctx.fillStyle = '#00ff88';
+        ctx.fill();
+        currentAngle += xAngle;
+    }
 
     // Draw K slice (red)
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + kAngle);
-    ctx.closePath();
-    ctx.fillStyle = '#ff6666';
-    ctx.fill();
-
-    // Draw I slice (blue)
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.arc(centerX, centerY, radius, -Math.PI / 2 + kAngle, -Math.PI / 2 + kAngle + iAngle);
-    ctx.closePath();
-    ctx.fillStyle = '#6666ff';
-    ctx.fill();
+    if (kVotes > 0) {
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, currentAngle, currentAngle + kAngle);
+        ctx.closePath();
+        ctx.fillStyle = '#ff6666';
+        ctx.fill();
+    }
 
     // Update border color based on votes
-    updateCanvasBorder(kVotes, iVotes);
+    updateCanvasBorder(kVotes, lVotes, xVotes);
 }
 
 socket.on('connect', function() {
@@ -129,6 +144,7 @@ socket.on('connect', function() {
 
 let lastKVotes = 0;
 let lastLVotes = 0;
+let lastXVotes = 0;
 
 socket.on('vote_update', function(data) {
     console.log('Vote update:', data);
@@ -136,6 +152,7 @@ socket.on('vote_update', function(data) {
     // Update vote counts with animation
     const kCountEl = document.getElementById('k-count');
     const lCountEl = document.getElementById('l-count');
+    const xCountEl = document.getElementById('x-count');
 
     if (data.k_votes !== lastKVotes) {
         kCountEl.classList.remove('animate');
@@ -151,25 +168,31 @@ socket.on('vote_update', function(data) {
         lastLVotes = data.l_votes;
     }
 
+    if (data.x_votes !== lastXVotes) {
+        xCountEl.classList.remove('animate');
+        void xCountEl.offsetWidth; // Force reflow
+        xCountEl.classList.add('animate');
+        lastXVotes = data.x_votes;
+    }
+
     kCountEl.textContent = data.k_votes;
     lCountEl.textContent = data.l_votes;
+    xCountEl.textContent = data.x_votes;
 
     // Calculate percentages
-    const total = data.k_votes + data.l_votes;
-    let kPercent = 50;
-    let lPercent = 50;
+    const total = data.k_votes + data.l_votes + data.x_votes;
+    let kPercent = 33;
+    let lPercent = 33;
+    let xPercent = 33;
 
     if (total > 0) {
         kPercent = (data.k_votes / total) * 100;
         lPercent = (data.l_votes / total) * 100;
+        xPercent = (data.x_votes / total) * 100;
     }
 
-    // Update bars
-    document.getElementById('k-bar').style.width = kPercent + '%';
-    document.getElementById('l-bar').style.width = lPercent + '%';
-
     // Update pie chart
-    drawPieChart(data.k_votes, data.l_votes);
+    drawPieChart(data.k_votes, data.l_votes, data.x_votes);
 
     // Update timer
     document.getElementById('time-remaining').textContent = data.time_remaining + 's';
@@ -184,6 +207,6 @@ socket.on('vote_update', function(data) {
 });
 
 // Initial draw
-drawPieChart(0, 0);
+drawPieChart(0, 0, 0);
 updateTimerDisplay();
 {% endblock %}
