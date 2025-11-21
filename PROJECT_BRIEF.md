@@ -163,12 +163,14 @@ Overlay Updates (broadcast vote state, results, lineage stats)
 ### Phase 1: Vote Display (No Execution)
 **Goal:** Visual vote counter working, manual admin execution
 
-- [ ] TwitchIO bot connects to channel
-- [ ] Parse chat for k/l/x commands
-- [ ] Track votes per user (latest replaces previous)
-- [ ] Identify first-L claimant
-- [ ] Display vote tally in overlay
+- [x] TwitchIO bot connects to channel (EventSub)
+- [x] Parse chat for k/l/x commands
+- [x] Track votes per user (latest replaces previous)
+- [x] Identify first-L claimant
+- [ ] Display vote tally in overlay (vote_manager ready, HTML update needed)
 - [ ] Manual testing: Admin executes winner via panel
+
+**Status:** 5/6 complete. Vote tracking fully operational, just needs overlay HTML update.
 
 **Deliverable:** Working vote counter, admin verifies logic before automation
 

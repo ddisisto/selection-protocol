@@ -16,19 +16,24 @@ Selection Protocol is a Twitch streaming experiment where chat votes every ~60 s
 
 ## Current Status
 
-**✅ Complete:**
+**✅ Phase 1 Complete:**
 - Overlay server (Flask + SocketIO) with admin panel
 - Keypress automation (xdotool → The Bibites)
 - OAuth authorization code flow (user access tokens)
 - Token caching and refresh logic
+- TwitchIO EventSub bot (receives chat messages)
+- Action registry (extensible k/l/x system)
+- Vote manager (tracks votes, first-L claimant logic)
+- SocketIO integration (bot ↔ Flask communication)
+- End-to-end vote flow (chat → bot → Flask → vote manager)
 
 **🚧 In Progress:**
-- TwitchIO EventSub bot rewrite (IRC → EventSub WebSocket)
+- Vote display in overlay (vote_manager ready, HTML needs update)
 
-**❌ Not Started:**
-- Vote manager (count k/l/x, first-L tracking)
-- Vote display in overlay
-- Automated execution (Phase 2)
+**❌ Phase 2 (Not Started):**
+- Automated vote execution (Phase 2)
+- Lineage tagging system (Phase 3)
+- Community features (Phase 4)
 
 ## Quick Start
 
@@ -49,10 +54,18 @@ cp config.yaml.example config.yaml
 # Edit config.yaml with your Twitch app credentials from:
 # https://dev.twitch.tv/console/apps
 
-# 3. Run Twitch bot (EventSub - in development)
+# 3. Run Twitch bot (connects to Flask, then Twitch EventSub)
 python -m src.twitch_bot --test  # 30s test mode
+python -m src.twitch_bot          # daemon mode (runs forever)
 # Browser opens for authorization on first run
 # Token cached to .twitch_token for future runs
+
+# Bot startup sequence:
+# 1. Connects to Flask (exits if Flask not running)
+# 2. Fetches enabled actions (k/l/x)
+# 3. Connects to Twitch EventSub
+# 4. Announces to chat
+# 5. Receives votes → sends to Flask → vote_manager tracks them
 ```
 
 ## Documentation
@@ -87,15 +100,30 @@ Works with 1 viewer or 1000. Empty stream = autonomous evolution.
 
 TBD
 
+## Architecture
+
+```
+Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager → Overlay
+                                              ↓
+                                         Admin Panel → xdotool → The Bibites
+```
+
+**Key Components:**
+- **Action Registry** ([src/actions.py](src/actions.py)) - Extensible action definitions
+- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking + first-L logic
+- **EventSub Bot** ([src/twitch_bot.py](src/twitch_bot.py)) - Twitch chat integration
+- **Flask Server** ([src/server.py](src/server.py)) - Overlay + admin panel + SocketIO
+- **Game Controller** ([src/game_controller.py](src/game_controller.py)) - xdotool automation
+
 ## Credits
 
-Concept and implementation: Daniel + Claude (Sonnet 4.5)  
+Concept and implementation: Daniel + Claude (Sonnet 4.5)
 Game: [The Bibites](https://thebibites.com) by Leore Avidar
 
 ---
 
-> DEMOCRACY ONLINE  
-> LINEAGE INHERITANCE: READY  
+> DEMOCRACY ONLINE
+> VOTE TRACKING: OPERATIONAL
 > SELECTION PROTOCOL: INITIALIZED
 
 🔥
