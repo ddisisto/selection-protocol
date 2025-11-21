@@ -116,7 +116,7 @@ def handle_vote_cast(data):
     if timestamp_str:
         try:
             timestamp = datetime.fromisoformat(timestamp_str)
-        except:
+        except (ValueError, TypeError):
             timestamp = datetime.now()
 
     # Record vote

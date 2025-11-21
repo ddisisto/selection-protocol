@@ -193,12 +193,35 @@ python -m src.twitch_bot --test
 - ~~IRC deprecated (bot receives 0 messages)~~ → EventSub working
 - ~~Bot self-filtering blocks same-account testing~~ → Removed username filter
 - ~~vote_state dict conflicts with vote_manager~~ → Cleaned up websocket.py
+- ~~Bare except clauses~~ → Fixed with specific exception types
 
 ### 🔍 To Watch For
 - **EventSub connection stability** - Bot needs reconnect logic (not implemented yet)
 - **Vote manager state persistence** - Currently in-memory only (resets on Flask restart)
 - **Overlay HTML update complexity** - overlay.py is 800+ lines, be careful with edits
 - **Timer/cycle management** - Not implemented yet (votes accumulate forever currently)
+
+### 📋 Technical Debt (By Phase)
+
+**Before Phase 2 (Automated Execution):**
+- [ ] Add `threading.Lock()` to `src/cooldowns.py` (race conditions possible)
+- [ ] Add `threading.Lock()` to `src/vote_manager.py` (shared state not protected)
+- [ ] Add input validation to `vote_cast` SocketIO handler (safety-critical)
+- [ ] Test EventSub disconnect behavior (may need explicit reconnection)
+- [ ] Add Flask SocketIO reconnection loop in bot (survives Flask restarts)
+
+**Before Phase 3 (Lineage Tagging):**
+- [ ] Replace `print()` with `logging` framework (persistent logs, severity levels)
+- [ ] Add log rotation and file output (debugging production issues)
+- [ ] Centralize configuration (move hardcoded values to config.yaml)
+
+**Before Phase 4 (Community Launch):**
+- [ ] Add unit tests (vote_manager first-L logic, cooldown expiry)
+- [ ] Add integration tests (end-to-end vote flow)
+- [ ] Add type hints to public APIs (IDE autocomplete, static analysis)
+- [ ] Add metrics/monitoring (uptime, throughput, error rates)
+
+**See:** `docs/archive/CODE_REVIEW_SESSION3.md` for detailed analysis
 
 ### 💡 Future Considerations
 - Add vote cycle timer (60s cycles)

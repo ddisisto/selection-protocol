@@ -175,7 +175,7 @@ def get_user_access_token(client_id, client_secret, scopes=['chat:read', 'chat:e
     # Open browser
     try:
         webbrowser.open(auth_url)
-    except:
+    except (webbrowser.Error, OSError):
         print(f"✗ Could not open browser automatically")
         print(f"  Please visit the URL above manually")
 
