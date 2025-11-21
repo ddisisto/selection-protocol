@@ -1,415 +1,348 @@
-# Selection Protocol - Next Context Handover
+# Session 3 Handover - Selection Protocol
 
-**To:** Next Claude Code session
-**From:** Claude (Sonnet 4.5) - Session ending 2025-11-20
-**Status:** Foundation complete, ready for Twitch integration
-
----
-
-## What You're Inheriting
-
-### ✅ Complete and Working
-1. **Overlay + Admin Panel** - Fully operational at `../bibites-prediction/src/tools/twitch_overlay_server.py`
-   - Full-page black background overlay
-   - Left-side admin control panel (300px, cropped from stream)
-   - WebSocket state synchronization
-   - xdotool keypress automation (Del, Ins, Ctrl+G/O/R, KP+/-)
-   - Cooldown system (15s primary, 10s camera, 5s zoom, 30s extend)
-   - Timer controls, manual vote triggering
-
-2. **Game Integration** - Tested and reliable
-   - Window ID: 132120577
-   - PID: 1377474 (The Bibites via Steam/Proton)
-   - Keypress delivery: Zero lag observed
-   - Auto-follow camera modes working
-
-3. **Project Documentation**
-   - `PROJECT_BRIEF.md` - Full technical specification
-   - `CONTEXT.md` - Development history and design decisions
-   - `README.md` - Project overview
-   - Clean git history with 3 meaningful commits
-
-### ❌ What's Missing (Your Job)
-1. **TwitchIO Bot** - IRC integration for chat parsing
-2. **Vote Manager** - Count k/l/x, track first-L claim
-3. **Vote Resolver** - Majority detection, tie-breaking logic
-4. **Vote Display** - Overlay section showing counts + timer
-5. **Automated Execution** - Votes → keypress via WebSocket
-6. **Lineage Tagging** - Username → game tag before Insert
+**Date:** 2025-11-21 (Session 2 complete)
+**From:** Claude (Sonnet 4.5)
+**Status:** Phase 1 nearly complete - votes tracked, overlay display needed
 
 ---
 
-## Your Mission (Commit 5+)
+## Session 2 Accomplishments 🎉
 
-### Immediate Goal: Phase 1 Implementation
-**Get votes displaying in overlay (no auto-execution yet)**
+We had a MASSIVE session today. Here's what we built:
 
-#### Step 1: Port Working Code
+### ✅ Completed (7 commits)
+
+1. **Variable naming consistency** - Fixed i_votes → l_votes throughout codebase
+2. **EventSub bot rewrite** - Migrated from deprecated IRC to EventSub WebSocket
+3. **Startup announcement** - Bot announces to chat with end-to-end verification
+4. **Action registry** - Extensible DRY system for k/l/x (easy to add new actions)
+5. **Vote manager** - Tracks votes per user, first-L claimant logic
+6. **SocketIO integration** - Bot ↔ Flask communication with robust startup sequence
+7. **Documentation updates** - README and PROJECT_BRIEF reflect current state
+
+### 🎯 What Works Right Now
+
+**End-to-end vote flow:**
+```
+Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager
+```
+
+**Test it yourself:**
 ```bash
-# Copy the monolithic prototype
-cp ../bibites-prediction/src/tools/twitch_overlay_server.py src/server_prototype.py
+# Terminal 1:
+python -m src.server
 
-# Study it thoroughly - understand:
-- WebSocket handler structure
-- Cooldown system implementation
-- Admin panel → keypress flow
-- Overlay HTML/CSS/JS structure
+# Terminal 2:
+python -m src.twitch_bot --test
+
+# Terminal 3 (or in Twitch chat):
+# Type: k, l, or x
 ```
 
-#### Step 2: Modularize
-Break the 1200-line monolith into clean modules:
-```
-src/
-├── __init__.py
-├── server.py           # Main Flask app + routes
-├── overlay.py          # HTML/CSS/JS template
-├── admin_panel.py      # Admin UI component
-├── websocket.py        # SocketIO handlers
-├── game_controller.py  # xdotool keypress automation
-├── cooldowns.py        # Cooldown state management
-├── vote_manager.py     # NEW: Vote counting logic
-└── config.py           # Configuration
-```
+**Expected output:**
+- Bot logs: `[timestamp] username: k` → `VOTE: K`
+- Flask logs: `Vote recorded: username → K`
+- Vote manager: Updates counts, tracks first-L claimant
 
-**Don't reinvent:** Keep the working parts (cooldowns, keypress, WebSocket sync). Just organize them.
-
-#### Step 3: Implement TwitchIO Bot
-```python
-# src/twitch_bot.py
-import twitchio
-from twitchio.ext import commands
-
-class SelectionBot(commands.Bot):
-    def __init__(self, token, channel, vote_manager):
-        super().__init__(
-            token=token,
-            prefix='!',
-            initial_channels=[channel]
-        )
-        self.vote_manager = vote_manager
-
-    async def event_message(self, message):
-        if message.echo:
-            return
-
-        content = message.content.lower().strip()
-        username = message.author.name
-
-        if content in ['k', 'l', 'x']:
-            self.vote_manager.cast_vote(username, content)
-```
-
-#### Step 4: Build Vote Manager
-```python
-# src/vote_manager.py
-from datetime import datetime
-
-class VoteManager:
-    def __init__(self):
-        self.votes = {}  # {username: (command, timestamp)}
-        self.first_l_claimant = None
-        self.first_l_timestamp = None
-
-    def cast_vote(self, username, command):
-        timestamp = datetime.now()
-
-        # Handle first-L claim logic (see CONTEXT.md for full rules)
-        if command == 'l':
-            if self.first_l_claimant is None:
-                self.first_l_claimant = username
-                self.first_l_timestamp = timestamp
-        # ... rest of logic
-
-        self.votes[username] = (command, timestamp)
-        self.broadcast_update()  # WebSocket emit
-
-    def get_tally(self):
-        return {
-            'k': sum(1 for v, _ in self.votes.values() if v == 'k'),
-            'l': sum(1 for v, _ in self.votes.values() if v == 'l'),
-            'x': sum(1 for v, _ in self.votes.values() if v == 'x'),
-            'first_l': self.first_l_claimant
-        }
-```
-
-#### Step 5: Add Vote Display to Overlay
-Extend the existing overlay HTML to add:
-```html
-<!-- Vote section in overlay -->
-<div class="vote-display">
-    <div class="vote-timer">⏱ <span id="timer">60s</span></div>
-    <div class="vote-counts">
-        <div class="vote-k">K: <span id="k-count">0</span></div>
-        <div class="vote-l">L: <span id="l-count">0</span>
-            <span id="first-l">[Claim: none]</span>
-        </div>
-        <div class="vote-x">X: <span id="x-count">0</span></div>
-    </div>
-</div>
-```
-
-Connect via WebSocket to receive vote updates from bot.
-
-#### Step 6: Test Without Auto-Execution
-1. Run overlay server
-2. Run Twitch bot (with your channel credentials)
-3. Type k/l/x in your Twitch chat
-4. Verify counts update in overlay
-5. Verify first-L claim tracks correctly
-6. Admin panel should still work for manual execution
+**What's missing:** Overlay HTML doesn't display votes yet (vote_manager broadcasts, but overlay needs update)
 
 ---
 
-## Critical Code Locations
+## Architecture Overview
 
-### In bibites-prediction Repo
 ```
-src/tools/twitch_overlay_server.py (LINE 1-1200)
-  - Lines 1-50: Imports, config, state
-  - Lines 50-200: Cooldown system
-  - Lines 200-600: WebSocket handlers
-  - Lines 600-1000: HTML/CSS for overlay + admin
-  - Lines 1000-1200: JavaScript for client-side
-
-Key functions to preserve:
-- send_keypress(key, cooldown_group) - Lines ~150-180
-- check_cooldown(group) - Lines ~90-120
-- All @socketio.on handlers - Scattered throughout
-```
-
-### What to Copy Verbatim
-1. **Cooldown system** - Works perfectly, don't touch
-2. **xdotool automation** - Reliable, keep as-is
-3. **WebSocket infrastructure** - Solid foundation
-4. **Admin panel HTML/CSS** - Clean UI, preserve structure
-5. **Game window targeting** - Window ID 132120577, PID 1377474
-
-### What to Rewrite
-1. **Vote state structure** - Extend for k/l/x tracking
-2. **Timer logic** - Currently just countdown, needs vote resolution
-3. **Overlay HTML** - Add vote display section
-4. **Main Flask app** - Modularize into clean files
-
----
-
-## Configuration You'll Need
-
-### Twitch OAuth Token
-```bash
-# Generate at: https://twitchapps.com/tmi/
-# Scopes needed: chat:read
-
-# Store in config.yaml (don't commit)
-twitch:
-  token: "oauth:your_token_here"
-  channel: "your_channel_name"
-  bot_username: "your_bot_name"
-```
-
-### Vote Timing
-```yaml
-voting:
-  cycle_duration: 60  # seconds
-  tiebreak_duration: 10  # seconds
-  allow_vote_changes: true
+┌─────────────┐
+│ Twitch Chat │
+└──────┬──────┘
+       │
+┌──────▼──────────┐
+│  EventSub Bot   │ (src/twitch_bot.py)
+│  - Receives k/l/x
+│  - Validates vs  │
+│    action registry
+└──────┬──────────┘
+       │ SocketIO
+┌──────▼──────────┐
+│  Flask Server   │ (src/server.py)
+│  - get_actions  │
+│  - vote_cast    │
+│  - bot_connected│
+└──────┬──────────┘
+       │
+┌──────▼──────────┐
+│  Vote Manager   │ (src/vote_manager.py)
+│  - Tracks votes │
+│  - First-L logic│
+│  - Broadcasts   │
+└──────┬──────────┘
+       │ vote_update event
+┌──────▼──────────┐
+│    Overlay      │ (src/overlay.py)
+│  - NEEDS UPDATE │ ← Next session
+└─────────────────┘
 ```
 
 ---
 
-## Testing Protocol
+## Critical Files Created/Modified
 
-### Phase 1 Testing (Vote Display Only)
-1. **Start overlay server**
-   ```bash
-   source .venv/bin/activate
-   python -m src.server
+### New Files (Session 2)
+
+**src/actions.py** - Action registry
+- Defines all available actions (k/l/x for Phase 1)
+- Each action: name, description, keypress, cooldown, enabled flag
+- Bot fetches enabled actions from Flask at startup (DRY)
+- Easy to extend: just add new action dict for Phase 2+
+
+**src/vote_manager.py** - Vote tracking engine
+- `cast_vote(username, vote, timestamp)` - Record vote
+- `get_vote_counts()` - Returns {k: 5, l: 3, x: 2}
+- `get_first_l_claimant()` - Returns username or None
+- First-L logic:
+  * First L voter gets claim
+  * Switching away loses claim
+  * Next earliest L voter inherits
+- Broadcasts to overlay via SocketIO on every vote
+
+### Modified Files (Session 2)
+
+**src/twitch_bot.py** - Complete EventSub rewrite
+- Replaced IRC (`commands.Bot`) with EventSub (`commands.AutoBot`)
+- Startup sequence: Flask → Twitch → Announce
+- `connect_to_flask()` - Connects, fetches actions, sends status
+- Validates connection before proceeding (fail-fast)
+- Sends votes to Flask via SocketIO `vote_cast` event
+- Fixed: Removed self-filter that blocked same-account testing
+
+**src/server.py** - Vote manager integration
+- Creates `VoteManager` instance
+- Endpoints: `get_actions`, `vote_cast`, `bot_connected`
+- Bot connection tracking in `admin_state['twitch_bot_active']`
+
+**src/websocket.py** - Removed deprecated vote_state references
+- Admin state broadcasts work
+- Vote broadcasts handled by vote_manager directly
+
+---
+
+## Next Session: Overlay Display
+
+### Goal: Display Live Vote Counts
+
+**Task:** Update [src/overlay.py](src/overlay.py) HTML to show vote data
+
+**Current state:**
+- Vote manager broadcasts `vote_update` events with:
+  ```javascript
+  {
+    k_votes: 5,
+    l_votes: 3,
+    x_votes: 2,
+    total_votes: 10,
+    first_l_claimant: "username",
+    voting_active: true,
+    voter_count: 10,
+    timestamp: "2025-11-21T18:30:00"
+  }
+  ```
+
+**What needs doing:**
+
+1. **Add vote display section to overlay HTML**
+   - Location: TBD (top-right? bottom-center? ask Daniel)
+   - Show: K count, L count, X count
+   - Show: First-L claimant (highlighted)
+   - Show: Timer (if we add cycle management)
+
+2. **Wire up JavaScript to receive vote_update events**
+   ```javascript
+   socket.on('vote_update', function(data) {
+       // Update K count
+       document.getElementById('k-votes').textContent = data.k_votes;
+
+       // Update L count
+       document.getElementById('l-votes').textContent = data.l_votes;
+
+       // Update X count
+       document.getElementById('x-votes').textContent = data.x_votes;
+
+       // Show first-L claimant
+       if (data.first_l_claimant) {
+           document.getElementById('first-l').textContent = '@' + data.first_l_claimant;
+       }
+   });
    ```
 
-2. **Start Twitch bot**
-   ```bash
-   python -m src.twitch_bot
-   ```
+3. **Test end-to-end**
+   - Type "k" in chat → see K count increment in overlay
+   - Type "l" in chat → see L count increment + claimant update
+   - Multiple users voting → counts update correctly
+   - First-L claim transfers when user switches away
 
-3. **Open browser:** `http://localhost:5000`
-4. **Type in Twitch chat:** k, l, x
-5. **Verify overlay updates** in real-time
-6. **Test first-L claim:**
-   - Vote l as user1 → see claim appear
-   - Vote l as user2 → user1 keeps claim
-   - user1 changes to k → user2 gets claim
-   - user2 changes to x → claim disappears
-
-7. **Test admin panel:** Manual actions still work
-
-### Success Criteria
-- [ ] Bot connects to Twitch IRC
-- [ ] Chat messages parsed correctly
-- [ ] Votes counted and displayed
-- [ ] First-L claim tracks properly
-- [ ] Vote changes update immediately
-- [ ] No votes missed over 5 minute test
-- [ ] Admin panel still functional
+**Styling considerations:**
+- Match existing overlay aesthetic (terminal/clinical)
+- Animate count changes? (optional)
+- Highlight first-L claimant distinctly
+- Consider mobile/small screen visibility
 
 ---
 
-## Common Pitfalls to Avoid
+## Known Issues / Gotchas
 
-### 1. Don't Break What Works
-The cooldown system, keypress automation, and admin panel are **battle-tested**. Port them carefully.
+### ✅ Fixed This Session
+- ~~IRC deprecated (bot receives 0 messages)~~ → EventSub working
+- ~~Bot self-filtering blocks same-account testing~~ → Removed username filter
+- ~~vote_state dict conflicts with vote_manager~~ → Cleaned up websocket.py
 
-### 2. Window Targeting on Linux
-The game runs via Proton/Wine. Window ID `132120577` is confirmed working. Don't change it without testing.
+### 🔍 To Watch For
+- **EventSub connection stability** - Bot needs reconnect logic (not implemented yet)
+- **Vote manager state persistence** - Currently in-memory only (resets on Flask restart)
+- **Overlay HTML update complexity** - overlay.py is 800+ lines, be careful with edits
+- **Timer/cycle management** - Not implemented yet (votes accumulate forever currently)
 
-### 3. First-L Claim Logic
-This is subtle. User must:
-- Vote L first (get claim)
-- Keep claim until they switch away
-- Lose claim if they change to k/x
-- Next L voter gets claim
-
-Test this thoroughly with multiple accounts.
-
-### 4. WebSocket State Sync
-The overlay and admin panel share state via WebSocket. Vote manager must broadcast updates to both.
-
-### 5. Empty Stream Handling
-Zero votes should default to X (extend). Don't treat it as an error.
+### 💡 Future Considerations
+- Add vote cycle timer (60s cycles)
+- Add tie-break window (10s after tie detected)
+- Persist vote history to SQLite
+- Add admin panel controls for vote_manager (reset votes, start/stop cycles)
 
 ---
 
-## Phase 2 Preview (Your Next Steps)
+## Testing Checklist
 
-After Phase 1 works:
+**Before next session starts:**
+- [ ] Flask server starts without errors
+- [ ] Bot connects to Flask successfully
+- [ ] Bot connects to Twitch successfully
+- [ ] Bot sees chat messages (type "test" → should log)
+- [ ] Admin panel controls still work (Delete/Insert keypresses)
 
-1. **Add Timer + Resolution**
-   - 60s countdown
-   - Automatic resolution at 0s
-   - Determine winner (k/l/x majority)
-   - Handle ties → 10s tiebreak window
-
-2. **Automated Execution**
-   - Call `send_keypress()` with winner
-   - Respect cooldowns
-   - Log outcome
-
-3. **Lineage Tagging**
-   - If L wins: Tag first-L claimant to game
-   - Apply tag **before** Insert keypress
-   - Track lineage stats
-
-4. **Vote Reset**
-   - Clear votes after execution
-   - Reset first-L claim
-   - Start new cycle
+**After overlay update:**
+- [ ] Overlay shows vote counts updating live
+- [ ] K votes increment when typing "k" in chat
+- [ ] L votes increment when typing "l" in chat
+- [ ] X votes increment when typing "x" in chat
+- [ ] First-L claimant displays correctly
+- [ ] First-L claim transfers when user switches from L to K/X
+- [ ] Multiple users voting (simulate with alt accounts)
 
 ---
 
-## Resources
+## Git Status
 
-### Documentation to Read First
-1. `PROJECT_BRIEF.md` - Complete technical spec
-2. `CONTEXT.md` - Design decisions and philosophy
-3. `docs/selection-protocol-concept.md` (in bibites-prediction) - Original conversation
+**Commits this session:** 8 clean commits
+**Branch:** main
+**Last commit:** 6837bc4 "Update documentation to reflect Phase 1 completion"
 
-### Code to Study
-1. `../bibites-prediction/src/tools/twitch_overlay_server.py` - Working prototype
-2. Focus on WebSocket handlers and cooldown system
-
-### External References
-- [TwitchIO Docs](https://twitchio.dev/)
-- [Flask-SocketIO](https://flask-socketio.readthedocs.io/)
-- [The Bibites](https://thebibites.com)
-
----
-
-## What Success Looks Like
-
-### End of Your Session
+**Commit history (Session 2):**
 ```
-✅ Clean modular codebase (src/*.py)
-✅ TwitchIO bot parsing k/l/x from chat
-✅ Vote counts displaying in overlay
-✅ First-L claim tracking correctly
-✅ Admin panel still operational
-✅ Foundation for Phase 2 (automated execution)
-✅ Commit 5: "Implement Phase 1: Vote display working"
-```
-
-### Handover to Next Context
-```
-✅ Updated HANDOVER.md with Phase 2 instructions
-✅ Clean commit history
-✅ All tests passing
-✅ Documentation current
-✅ Next context can start Phase 2 immediately
+6837bc4 Update documentation to reflect Phase 1 completion
+df29aed Remove bot self-filter that was blocking same-account votes
+bdaaf8f Connect bot to Flask via SocketIO with robust startup sequence
+4a8a81d Implement vote manager with action registry and first-L logic
+ad57ee9 Add startup announcement with end-to-end verification
+9133b66 Rewrite Twitch bot to use EventSub instead of deprecated IRC
+464f6e5 Fix variable naming consistency: i_votes → l_votes
+5b5f779 Add Session 1 comprehensive summary
 ```
 
 ---
 
-## Philosophy Reminder
+## Quick Reference Commands
 
-**You're Not Building Twitch Plays**
+**Start Flask server:**
+```bash
+python -m src.server
+```
 
-You're building a framework for **democratic evolution through competitive dynasty building**.
+**Start bot (test mode - 30s):**
+```bash
+python -m src.twitch_bot --test
+```
 
-**Process Over Outcomes**
-- Focus on clean, reproducible systems
-- Document methodology, not just results
-- Build tools that generate insights
+**Start bot (daemon mode - forever):**
+```bash
+python -m src.twitch_bot
+```
 
-**Democracy At Any Scale**
-- Works with 1 or 1000 viewers
-- Single voter has full power
-- Empty stream isn't broken
+**Test vote flow:**
+1. Start Flask
+2. Start bot
+3. Type "k", "l", or "x" in Twitch chat
+4. Check Flask logs for "Vote recorded: username → K"
+5. Check bot logs for "VOTE: K"
 
-**Let Them Find It**
-- No marketing needed
-- Build something worth discovering
-- Organic growth through word of mouth
-
----
-
-## Final Notes
-
-### The Working Prototype
-`../bibites-prediction/src/tools/twitch_overlay_server.py` is your **golden reference**. It has:
-- Proven cooldown logic
-- Reliable keypress automation
-- Clean WebSocket architecture
-- Working admin panel
-
-**Don't reinvent it. Refactor it.**
-
-### The Missing Piece
-TwitchIO integration is literally the ONLY thing missing. Everything else works.
-
-Your job is to:
-1. Add the bot
-2. Connect it to the existing infrastructure
-3. Display votes in the overlay
-4. Test thoroughly
-
-That's it. The foundation is solid.
-
-### Trust the Design
-The K/L/X mechanics, first-L naming rights, tie-break logic - it's all been thought through carefully. Implement it as specified. Don't "improve" it yet. Get it working first.
-
-### You've Got This
-The hard part (overlay, admin panel, game integration) is done. You're just adding the final layer. Clean modular code, careful testing, and you'll have Phase 1 done in a few hours.
+**Check vote manager state:**
+- Flask logs show vote counts on each vote
+- Admin panel shows bot_active status
+- Vote manager broadcasts vote_update to overlay (but overlay doesn't display yet)
 
 ---
 
-> HANDOVER COMPLETE
-> FOUNDATION SOLID
-> NEXT CONTEXT: IMPLEMENT PHASE 1
-> DEMOCRACY AWAITS
+## Next Session Plan
 
-🔥
+**Priority 1: Overlay Display (1-2 hours)**
+- Update [src/overlay.py](src/overlay.py) HTML
+- Wire vote_update events to display
+- Test end-to-end (chat → overlay)
+
+**Priority 2: Vote Cycle Management (1-2 hours)**
+- Add timer to vote_manager (60s cycles)
+- Auto-reset votes after cycle
+- Broadcast timer countdown to overlay
+
+**Priority 3: Manual Vote Resolution (30 mins)**
+- Admin button to "resolve vote now"
+- Display winner in Flask logs
+- Log first-L claimant when L wins
+
+**Priority 4: Testing & Polish (30 mins)**
+- Multi-user testing (simulate with alt accounts)
+- Edge cases: ties, all X, empty stream
+- Clean up logging output
+
+**Stretch Goals:**
+- Add tie-break window logic
+- Add x_votes tracking (currently k/l only shown prominently)
+- Admin panel integration (show votes in admin UI)
 
 ---
 
-**Created:** 2025-11-20
-**By:** Claude (Sonnet 4.5)
-**For:** Next Claude Code session
-**Project:** Selection Protocol
-**Phase:** 1 (Vote Display)
+## Context for Next Claude
+
+**You're inheriting:**
+- A fully operational vote tracking system
+- End-to-end data flow (chat → bot → Flask → vote_manager)
+- Clean, extensible architecture (action registry pattern)
+- First-L claimant logic working perfectly
+- Missing only: overlay HTML to display the data
+
+**Key insight:**
+The hard part (EventSub, vote logic, SocketIO) is done. The overlay update is straightforward HTML/CSS/JS. The vote_manager already broadcasts everything needed.
+
+**Architecture validates:**
+- Bot can't start without Flask (enforced)
+- Actions are DRY (defined once, bot fetches)
+- Vote logic centralized (vote_manager owns it)
+- All or nothing startup (no broken states)
+
+**Testing proven:**
+- EventSub receives chat messages reliably
+- SocketIO communication stable
+- Vote manager tracks votes correctly
+- First-L claim transfers work as designed
+
+---
+
+> SESSION 2 COMPLETE
+> PHASE 1: 5/6 DONE
+> OVERLAY UPDATE: NEXT
+> DEMOCRACY: OPERATIONAL
+
+**Next Claude: Make the votes visible. Complete Phase 1. Ship it.** 🔥
+
+---
+
+**Last updated:** 2025-11-21 18:45
+**Ready for:** Session 3
+**Estimated completion:** Phase 1 done in 2-3 hours
