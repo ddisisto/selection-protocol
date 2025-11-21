@@ -30,7 +30,7 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
         socketio.emit('admin_state_update', {
             **admin_state,
             'k_votes': vote_state['k_votes'],
-            'l_votes': vote_state['i_votes']
+            'l_votes': vote_state['l_votes']
         })
 
     @socketio.on('connect')
@@ -45,7 +45,7 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
         emit('admin_state_update', {
             **admin_state,
             'k_votes': vote_state['k_votes'],
-            'l_votes': vote_state['i_votes']
+            'l_votes': vote_state['l_votes']
         })
         emit('cooldown_update', get_cooldown_state_dict())
 
@@ -60,8 +60,8 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
     def handle_admin_add_k():
         """Handle admin K +1 button."""
         vote_state['k_votes'] += 1
-        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['i_votes']
-        log_action("K +1", f"K={vote_state['k_votes']}, L={vote_state['i_votes']}")
+        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
+        log_action("K +1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
         broadcast_states()
 
     @socketio.on('admin_sub_k')
@@ -69,32 +69,32 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
         """Handle admin K -1 button."""
         if vote_state['k_votes'] > 0:
             vote_state['k_votes'] -= 1
-            vote_state['total_votes'] = vote_state['k_votes'] + vote_state['i_votes']
-            log_action("K -1", f"K={vote_state['k_votes']}, L={vote_state['i_votes']}")
+            vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
+            log_action("K -1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
             broadcast_states()
 
     @socketio.on('admin_add_l')
     def handle_admin_add_l():
         """Handle admin L +1 button."""
-        vote_state['i_votes'] += 1
-        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['i_votes']
-        log_action("L +1", f"K={vote_state['k_votes']}, L={vote_state['i_votes']}")
+        vote_state['l_votes'] += 1
+        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
+        log_action("L +1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
         broadcast_states()
 
     @socketio.on('admin_sub_l')
     def handle_admin_sub_l():
         """Handle admin L -1 button."""
-        if vote_state['i_votes'] > 0:
-            vote_state['i_votes'] -= 1
-            vote_state['total_votes'] = vote_state['k_votes'] + vote_state['i_votes']
-            log_action("L -1", f"K={vote_state['k_votes']}, L={vote_state['i_votes']}")
+        if vote_state['l_votes'] > 0:
+            vote_state['l_votes'] -= 1
+            vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
+            log_action("L -1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
             broadcast_states()
 
     @socketio.on('admin_reset')
     def handle_admin_reset():
         """Handle admin reset button."""
         vote_state['k_votes'] = 0
-        vote_state['i_votes'] = 0
+        vote_state['l_votes'] = 0
         vote_state['total_votes'] = 0
         log_action("Reset votes", "K=0, L=0")
         broadcast_states()
@@ -107,9 +107,9 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
             vote_state['k_votes'] += 1
             log_action("Random vote", "Added K")
         else:
-            vote_state['i_votes'] += 1
+            vote_state['l_votes'] += 1
             log_action("Random vote", "Added L")
-        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['i_votes']
+        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
         broadcast_states()
 
     @socketio.on('admin_send_keypress')
@@ -171,19 +171,19 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
     def handle_admin_trigger_now():
         """Handle admin trigger now button."""
         # Determine winner
-        if vote_state['k_votes'] > vote_state['i_votes']:
+        if vote_state['k_votes'] > vote_state['l_votes']:
             winner = 'K (Kill)'
             send_keypress('Delete', log_action)
-        elif vote_state['i_votes'] > vote_state['k_votes']:
+        elif vote_state['l_votes'] > vote_state['k_votes']:
             winner = 'L (Lay)'
-            send_keypress('i', log_action)
+            send_keypress('Insert', log_action)
         else:
             winner = 'Tie - no action'
 
         log_action("Triggered manually", f"Winner: {winner}")
         # Reset votes after triggering
         vote_state['k_votes'] = 0
-        vote_state['i_votes'] = 0
+        vote_state['l_votes'] = 0
         vote_state['total_votes'] = 0
         vote_state['time_remaining'] = admin_state['timer_duration']
         broadcast_states()

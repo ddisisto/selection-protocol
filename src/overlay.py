@@ -542,13 +542,13 @@ OVERLAY_TEMPLATE = """
                             </div>
                         </div>
 
-                        <div class="vote-item i">
+                        <div class="vote-item l">
                             <div class="vote-header">
-                                <span class="vote-label i">L: Lay</span>
-                                <span class="vote-number i" id="i-count">0</span>
+                                <span class="vote-label l">L: Lay</span>
+                                <span class="vote-number l" id="l-count">0</span>
                             </div>
                             <div class="vote-bar-container">
-                                <div class="vote-bar i" id="i-bar" style="width: 50%"></div>
+                                <div class="vote-bar l" id="l-bar" style="width: 50%"></div>
                             </div>
                         </div>
                     </div>
@@ -678,14 +678,14 @@ OVERLAY_TEMPLATE = """
         });
 
         let lastKVotes = 0;
-        let lastIVotes = 0;
+        let lastLVotes = 0;
 
         socket.on('vote_update', function(data) {
             console.log('Vote update:', data);
 
             // Update vote counts with animation
             const kCountEl = document.getElementById('k-count');
-            const iCountEl = document.getElementById('i-count');
+            const lCountEl = document.getElementById('l-count');
 
             if (data.k_votes !== lastKVotes) {
                 kCountEl.classList.remove('animate');
@@ -694,32 +694,32 @@ OVERLAY_TEMPLATE = """
                 lastKVotes = data.k_votes;
             }
 
-            if (data.i_votes !== lastIVotes) {
-                iCountEl.classList.remove('animate');
-                void iCountEl.offsetWidth; // Force reflow
-                iCountEl.classList.add('animate');
-                lastIVotes = data.i_votes;
+            if (data.l_votes !== lastLVotes) {
+                lCountEl.classList.remove('animate');
+                void lCountEl.offsetWidth; // Force reflow
+                lCountEl.classList.add('animate');
+                lastLVotes = data.l_votes;
             }
 
             kCountEl.textContent = data.k_votes;
-            iCountEl.textContent = data.i_votes;
+            lCountEl.textContent = data.l_votes;
 
             // Calculate percentages
-            const total = data.k_votes + data.i_votes;
+            const total = data.k_votes + data.l_votes;
             let kPercent = 50;
-            let iPercent = 50;
+            let lPercent = 50;
 
             if (total > 0) {
                 kPercent = (data.k_votes / total) * 100;
-                iPercent = (data.i_votes / total) * 100;
+                lPercent = (data.l_votes / total) * 100;
             }
 
             // Update bars
             document.getElementById('k-bar').style.width = kPercent + '%';
-            document.getElementById('i-bar').style.width = iPercent + '%';
+            document.getElementById('l-bar').style.width = lPercent + '%';
 
             // Update pie chart
-            drawPieChart(data.k_votes, data.i_votes);
+            drawPieChart(data.k_votes, data.l_votes);
 
             // Update timer
             document.getElementById('time-remaining').textContent = data.time_remaining + 's';

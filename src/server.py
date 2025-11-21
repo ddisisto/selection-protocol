@@ -25,7 +25,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Vote state (will be updated by Twitch bot in future)
 vote_state = {
     'k_votes': 0,
-    'i_votes': 0,
+    'l_votes': 0,
     'total_votes': 0,
     'time_remaining': 30,
     'voting_active': False,
@@ -69,15 +69,15 @@ def overlay():
     return render_template_string(OVERLAY_TEMPLATE)
 
 
-def update_votes(k_votes, i_votes, time_remaining=30, voting_active=True):
+def update_votes(k_votes, l_votes, time_remaining=30, voting_active=True):
     """Update vote counts and broadcast to all connected clients."""
     vote_state['k_votes'] = k_votes
-    vote_state['i_votes'] = i_votes
-    vote_state['total_votes'] = k_votes + i_votes
+    vote_state['l_votes'] = l_votes
+    vote_state['total_votes'] = k_votes + l_votes
     vote_state['time_remaining'] = time_remaining
     vote_state['voting_active'] = voting_active
     socketio.emit('vote_update', vote_state)
-    print(f"Votes updated: K={k_votes}, I={i_votes}, Time={time_remaining}s")
+    print(f"Votes updated: K={k_votes}, L={l_votes}, Time={time_remaining}s")
 
 
 if __name__ == '__main__':
@@ -96,7 +96,7 @@ if __name__ == '__main__':
 
     # Start with demo data
     vote_state['k_votes'] = 12
-    vote_state['i_votes'] = 8
+    vote_state['l_votes'] = 8
     vote_state['total_votes'] = 20
     vote_state['time_remaining'] = 25
     vote_state['voting_active'] = True
