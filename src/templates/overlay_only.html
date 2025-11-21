@@ -179,6 +179,14 @@ socket.on('vote_update', function(data) {
     lCountEl.textContent = data.l_votes;
     xCountEl.textContent = data.x_votes;
 
+    // Update first-L claimant
+    const claimantEl = document.getElementById('l-claimant');
+    if (data.first_l_claimant) {
+        claimantEl.textContent = data.first_l_claimant;
+    } else {
+        claimantEl.textContent = '';
+    }
+
     // Calculate percentages
     const total = data.k_votes + data.l_votes + data.x_votes;
     let kPercent = 33;
