@@ -23,7 +23,7 @@ class SelectionBot(commands.AutoBot):
     - x: Extend, keep watching (do nothing)
     """
 
-    def __init__(self, client_id, client_secret, bot_id, owner_id, channel_id, vote_manager=None):
+    def __init__(self, client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, vote_manager=None):
         """
         Initialize the TwitchIO EventSub bot.
 
@@ -33,6 +33,8 @@ class SelectionBot(commands.AutoBot):
             bot_id: Bot user ID (numeric, from Twitch)
             owner_id: Channel owner user ID (numeric) - same as bot_id for personal bot
             channel_id: Channel ID (numeric) to monitor chat in
+            access_token: User access token for sending messages
+            bot_username: Bot's Twitch username (for filtering own messages)
             vote_manager: VoteManager instance to receive votes (None for testing)
         """
         # Initialize with EventSub support
@@ -49,6 +51,11 @@ class SelectionBot(commands.AutoBot):
         self.start_time = datetime.now()
         self.votes_received = 0
         self.messages_received = 0
+        self.startup_message_verified = False
+        # Store for chat message sending and filtering
+        self._client_id = client_id
+        self._access_token = access_token
+        self._bot_username = bot_username.lower()
 
     async def event_ready(self):
         """Called when bot connects to Twitch EventSub."""
@@ -78,6 +85,9 @@ class SelectionBot(commands.AutoBot):
         # Start heartbeat task
         asyncio.create_task(self._heartbeat())
 
+        # Send startup announcement to chat
+        asyncio.create_task(self._send_startup_announcement())
+
     @commands.Component.listener()
     async def event_message(self, payload: eventsub_.ChatMessage):
         """
@@ -94,7 +104,17 @@ class SelectionBot(commands.AutoBot):
 
         self.messages_received += 1
 
-        # Log ALL chat messages
+        # Check if this is our startup message reflected back
+        if not self.startup_message_verified and "Selection Protocol online" in text and username.lower() == self._bot_username:
+            self.startup_message_verified = True
+            print(f"✓ Startup message verified (end-to-end chat confirmed)")
+            return  # Don't log our own startup message
+
+        # Log ALL chat messages (except our own)
+        # Note: EventSub doesn't filter bot's own messages like IRC did
+        if username.lower() == self._bot_username:
+            return  # Skip bot's own messages
+
         print(f"[{timestamp}] {username}: {text}")
 
         # Parse vote commands
@@ -139,6 +159,48 @@ class SelectionBot(commands.AutoBot):
         # Crash hard
         import sys
         sys.exit(1)
+
+    async def _send_startup_announcement(self):
+        """
+        Send startup message to chat and verify it's received.
+
+        This confirms end-to-end Twitch communication is working.
+        """
+        # Wait a moment for EventSub to be fully ready
+        await asyncio.sleep(2)
+
+        try:
+            # Send message using Twitch API (EventSub doesn't send via WebSocket)
+            # We'll use the chat send endpoint
+            url = "https://api.twitch.tv/helix/chat/messages"
+            headers = {
+                "Client-ID": self._client_id,
+                "Authorization": f"Bearer {self._access_token}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "broadcaster_id": self.channel_id,
+                "sender_id": self.bot_id,
+                "message": "Selection Protocol online. Democracy initialized. Vote: k (kill) | l (lay) | x (extend)"
+            }
+
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+
+            print("✓ Startup announcement sent to chat")
+
+            # Wait up to 5 seconds for verification
+            for i in range(50):
+                if self.startup_message_verified:
+                    break
+                await asyncio.sleep(0.1)
+
+            if not self.startup_message_verified:
+                print("⚠ Startup message not verified (didn't see reflection in 5s)")
+                print("  Chat sending may work, but EventSub reflection not confirmed")
+        except Exception as e:
+            print(f"⚠ Failed to send startup announcement: {e}")
+            print("  Bot will continue (receiving still works)")
 
     async def _heartbeat(self):
         """Print periodic stats to show bot is alive."""
@@ -187,7 +249,7 @@ def get_user_id(username, client_id, token):
     return data["data"][0]["id"]
 
 
-async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, vote_manager=None):
+async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, vote_manager=None):
     """
     Run the Twitch EventSub bot.
 
@@ -197,9 +259,11 @@ async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, vote_m
         bot_id: Bot user ID (numeric)
         owner_id: Channel owner user ID (numeric)
         channel_id: Channel ID (numeric) to monitor
+        access_token: User access token for sending messages
+        bot_username: Bot's Twitch username
         vote_manager: VoteManager instance (optional)
     """
-    bot = SelectionBot(client_id, client_secret, bot_id, owner_id, channel_id, vote_manager)
+    bot = SelectionBot(client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, vote_manager)
     await bot.start()
 
 
@@ -293,6 +357,8 @@ if __name__ == '__main__':
                     bot_id,
                     owner_id,
                     channel_id,
+                    token,
+                    twitch_config['nick'],
                     None
                 )
                 # Start bot in background
@@ -317,6 +383,8 @@ if __name__ == '__main__':
                 bot_id=bot_id,
                 owner_id=owner_id,
                 channel_id=channel_id,
+                access_token=token,
+                bot_username=twitch_config['nick'],
                 vote_manager=None
             ))
     except Exception as e:
