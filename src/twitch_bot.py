@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-TwitchIO bot for Selection Protocol.
+TwitchIO bot for Selection Protocol using EventSub.
 
-Connects to Twitch IRC chat and parses k/l/x commands from viewers.
+Connects to Twitch EventSub WebSocket and parses k/l/x commands from viewers.
 Passes vote data to the vote manager for tracking and resolution.
 """
 
 import asyncio
 import requests
 from twitchio.ext import commands
+from twitchio import eventsub, eventsub_
 from datetime import datetime
 
 
-class SelectionBot(commands.Bot):
+class SelectionBot(commands.AutoBot):
     """
-    Twitch IRC bot for parsing vote commands (k/l/x) from chat.
+    Twitch EventSub bot for parsing vote commands (k/l/x) from chat.
 
     Commands:
     - k: Kill current bibite (Delete key)
@@ -22,92 +23,93 @@ class SelectionBot(commands.Bot):
     - x: Extend, keep watching (do nothing)
     """
 
-    def __init__(self, token, channel, nick, client_id, client_secret, bot_id, vote_manager=None):
+    def __init__(self, client_id, client_secret, bot_id, owner_id, channel_id, vote_manager=None):
         """
-        Initialize the TwitchIO bot.
+        Initialize the TwitchIO EventSub bot.
 
         Args:
-            token: OAuth token (with 'oauth:' prefix)
-            channel: Twitch channel name to join
-            nick: Bot's username
             client_id: Application client ID
             client_secret: Application client secret
             bot_id: Bot user ID (numeric, from Twitch)
+            owner_id: Channel owner user ID (numeric) - same as bot_id for personal bot
+            channel_id: Channel ID (numeric) to monitor chat in
             vote_manager: VoteManager instance to receive votes (None for testing)
         """
-        # Initialize with IRC capabilities
+        # Initialize with EventSub support
         super().__init__(
-            token=token,
             client_id=client_id,
             client_secret=client_secret,
             bot_id=bot_id,
+            owner_id=owner_id,
             prefix='!',  # For future commands like !lineage
-            initial_channels=[channel],
-            # Enable IRC tags and membership for proper message receiving
-            capabilities=["tags", "membership", "commands"]
+            force_subscribe=True,  # Auto-subscribe to EventSub events
         )
         self.vote_manager = vote_manager
-        self.channel_name = channel
+        self.channel_id = channel_id
         self.start_time = datetime.now()
         self.votes_received = 0
         self.messages_received = 0
 
     async def event_ready(self):
-        """Called when bot connects to Twitch IRC."""
+        """Called when bot connects to Twitch EventSub."""
         print(f"\n{'='*60}")
-        print(f"TwitchIO Bot Connected!")
+        print(f"TwitchIO EventSub Bot Connected!")
         print(f"{'='*60}")
-        print(f"Joined channel: #{self.channel_name}")
+        print(f"Bot ID: {self.bot_id}")
+        print(f"Channel ID: {self.channel_id}")
         print(f"Connected at: {self.start_time.strftime('%H:%M:%S')}")
         print(f"\nListening for commands: k (kill), l (lay), x (extend)")
         print(f"{'='*60}\n")
 
-        # Send a startup message to chat (skip for now, focus on receiving)
-        # TODO: Fix sending messages once receiving works
-        print(f"(Skipping startup message for now, will fix once receiving works)")
+        # Subscribe to chat messages for our channel
+        try:
+            subs = [
+                eventsub.ChatMessageSubscription(
+                    broadcaster_user_id=self.channel_id,
+                    user_id=self.bot_id
+                ),
+            ]
+            await self.multi_subscribe(subs)
+            print("✓ Subscribed to chat message events")
+        except Exception as e:
+            print(f"✗ Failed to subscribe to EventSub: {e}")
+            raise
 
         # Start heartbeat task
-        import asyncio
         asyncio.create_task(self._heartbeat())
 
-    async def event_message(self, message):
+    @commands.Component.listener()
+    async def event_message(self, payload: eventsub_.ChatMessage):
         """
-        Handle incoming chat messages.
+        Handle incoming chat messages from EventSub.
 
-        Parses k/l/x commands and passes them to vote manager.
-        Ignores bot's own messages.
+        Args:
+            payload: EventSub ChatMessage payload with chatter info and text
         """
-        # Debug: log that we received ANY message at all
         timestamp = datetime.now().strftime('%H:%M:%S')
 
-        # Ignore messages from the bot itself
-        if message.echo:
-            print(f"[{timestamp}] (ignored bot's own message)")
-            return
+        # Extract username and message text from EventSub payload
+        username = payload.chatter.name
+        text = payload.text
 
         self.messages_received += 1
-        username = message.author.name if message.author else "Unknown"
-        content = message.content
 
         # Log ALL chat messages
-        print(f"[{timestamp}] {username}: {content}")
-
-        # Handle bot commands (like !lineage) - delegates to commands framework
-        await self.handle_commands(message)
+        print(f"[{timestamp}] {username}: {text}")
 
         # Parse vote commands
-        content_lower = content.lower().strip()
+        text_lower = text.lower().strip()
 
         # Check if message is a valid vote command
-        if content_lower in ['k', 'l', 'x']:
+        if text_lower in ['k', 'l', 'x']:
             self.votes_received += 1
 
             # Log vote (highlighted)
-            print(f"  → VOTE: {content_lower.upper()}")
+            print(f"  → VOTE: {text_lower.upper()}")
 
             # Pass to vote manager (if connected)
             if self.vote_manager:
-                self.vote_manager.cast_vote(username, content_lower, datetime.now())
+                self.vote_manager.cast_vote(username, text_lower, datetime.now())
             else:
                 print(f"  → No vote manager connected (skeleton mode)")
 
@@ -140,7 +142,6 @@ class SelectionBot(commands.Bot):
 
     async def _heartbeat(self):
         """Print periodic stats to show bot is alive."""
-        import asyncio
         while True:
             await asyncio.sleep(10)
             uptime = (datetime.now() - self.start_time).seconds
@@ -156,31 +157,6 @@ class SelectionBot(commands.Bot):
     async def stats_command(self, ctx):
         """Show overall voting stats (future implementation)."""
         await ctx.send(f"Stats: {self.votes_received} votes received since bot started.")
-
-
-def get_app_access_token(client_id, client_secret):
-    """
-    Get app access token using client credentials flow.
-
-    Args:
-        client_id: Your application's client ID
-        client_secret: Your application's client secret
-
-    Returns:
-        OAuth token string (without 'oauth:' prefix)
-    """
-    url = "https://id.twitch.tv/oauth2/token"
-    params = {
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "grant_type": "client_credentials"
-    }
-
-    response = requests.post(url, params=params)
-    response.raise_for_status()
-
-    data = response.json()
-    return data["access_token"]
 
 
 def get_user_id(username, client_id, token):
@@ -211,20 +187,19 @@ def get_user_id(username, client_id, token):
     return data["data"][0]["id"]
 
 
-async def run_bot(token, channel, nick, client_id, client_secret, bot_id, vote_manager=None):
+async def run_bot(client_id, client_secret, bot_id, owner_id, channel_id, vote_manager=None):
     """
-    Run the Twitch bot.
+    Run the Twitch EventSub bot.
 
     Args:
-        token: OAuth token (with 'oauth:' prefix)
-        channel: Channel to join
-        nick: Bot username
         client_id: Application client ID
         client_secret: Application client secret
         bot_id: Bot user ID (numeric)
+        owner_id: Channel owner user ID (numeric)
+        channel_id: Channel ID (numeric) to monitor
         vote_manager: VoteManager instance (optional)
     """
-    bot = SelectionBot(token, channel, nick, client_id, client_secret, bot_id, vote_manager)
+    bot = SelectionBot(client_id, client_secret, bot_id, owner_id, channel_id, vote_manager)
     await bot.start()
 
 
@@ -269,7 +244,7 @@ if __name__ == '__main__':
     twitch_config = config['twitch']
 
     mode_str = "TEST MODE (30s then exit)" if test_mode else "DAEMON MODE (runs forever)"
-    print(f"Starting TwitchIO bot in {mode_str}")
+    print(f"Starting TwitchIO EventSub bot in {mode_str}")
     print("Getting user access token...")
 
     # Get user access token (from cache or OAuth flow)
@@ -286,13 +261,23 @@ if __name__ == '__main__':
 
         print(f"✓ User access token obtained")
 
-        # Auto-fetch bot_id from username
+        # Auto-fetch bot_id and channel_id from usernames
         bot_id = get_user_id(
             twitch_config['nick'],
             twitch_config['client_id'],
             token
         )
         print(f"✓ Bot ID obtained: {bot_id} (for user: {twitch_config['nick']})")
+
+        channel_id = get_user_id(
+            twitch_config['channel'],
+            twitch_config['client_id'],
+            token
+        )
+        print(f"✓ Channel ID obtained: {channel_id} (for channel: {twitch_config['channel']})")
+
+        # For personal bot, owner_id = bot_id
+        owner_id = bot_id
 
         if test_mode:
             print(f"\nTest mode: Will run for 30 seconds then exit")
@@ -303,12 +288,11 @@ if __name__ == '__main__':
             # Test mode: run for 30s then exit cleanly
             async def run_test():
                 bot = SelectionBot(
-                    f"oauth:{token}",
-                    twitch_config['channel'],
-                    twitch_config['nick'],
                     twitch_config['client_id'],
                     twitch_config['client_secret'],
                     bot_id,
+                    owner_id,
+                    channel_id,
                     None
                 )
                 # Start bot in background
@@ -328,16 +312,17 @@ if __name__ == '__main__':
         else:
             # Daemon mode: run forever
             asyncio.run(run_bot(
-                token=f"oauth:{token}",
-                channel=twitch_config['channel'],
-                nick=twitch_config['nick'],
                 client_id=twitch_config['client_id'],
                 client_secret=twitch_config['client_secret'],
                 bot_id=bot_id,
+                owner_id=owner_id,
+                channel_id=channel_id,
                 vote_manager=None
             ))
     except Exception as e:
         print(f"✗ Failed to initialize bot: {e}")
         print("\nCheck that your client_id, client_secret, and nick are correct")
         print("Get credentials from: https://dev.twitch.tv/console/apps")
+        import traceback
+        traceback.print_exc()
         exit(1)
