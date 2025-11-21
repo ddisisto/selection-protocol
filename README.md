@@ -16,8 +16,19 @@ Selection Protocol is a Twitch streaming experiment where chat votes every ~60 s
 
 ## Current Status
 
-**✅ Infrastructure:** Overlay, admin panel, keypress automation operational  
-**❌ Missing:** Twitch chat integration (TwitchIO bot)
+**✅ Complete:**
+- Overlay server (Flask + SocketIO) with admin panel
+- Keypress automation (xdotool → The Bibites)
+- OAuth authorization code flow (user access tokens)
+- Token caching and refresh logic
+
+**🚧 In Progress:**
+- TwitchIO EventSub bot rewrite (IRC → EventSub WebSocket)
+
+**❌ Not Started:**
+- Vote manager (count k/l/x, first-L tracking)
+- Vote display in overlay
+- Automated execution (Phase 2)
 
 ## Quick Start
 
@@ -29,11 +40,19 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run overlay server
+# 1. Run overlay server (admin panel + OBS source)
 python -m src.server
+# → http://localhost:5000
 
-# Configure Twitch (coming soon)
-# ...
+# 2. Configure Twitch OAuth (first time only)
+cp config.yaml.example config.yaml
+# Edit config.yaml with your Twitch app credentials from:
+# https://dev.twitch.tv/console/apps
+
+# 3. Run Twitch bot (EventSub - in development)
+python -m src.twitch_bot --test  # 30s test mode
+# Browser opens for authorization on first run
+# Token cached to .twitch_token for future runs
 ```
 
 ## Documentation
