@@ -8,10 +8,9 @@ twitch:
   client_secret: "your_client_secret_here"
 
   # Your Twitch channel name (lowercase)
+  # For personal bot, use same value for both channel and nick
   channel: "your_channel_name"
-
-  # Bot username (can be your main account or separate bot account)
-  nick: "your_bot_username"
+  nick: "your_channel_name"
 
 voting:
   # Vote cycle duration in seconds

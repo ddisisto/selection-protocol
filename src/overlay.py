@@ -9,7 +9,7 @@ OVERLAY_TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Bibites - Twitch Plays God (Admin)</title>
+    <title>Selection Protocol - Overlay + Admin</title>
     <meta charset="utf-8">
     <style>
         * {
@@ -274,7 +274,7 @@ OVERLAY_TEMPLATE = """
             color: white;
             background: #808080;
             text-transform: uppercase;
-            letter-spacing: 20px;
+            letter-spacing: 8px;
         }
 
         .overlay-container {
@@ -521,7 +521,7 @@ OVERLAY_TEMPLATE = """
 
     <!-- Overlay Wrapper - Right Side (visible in OBS) -->
     <div class="overlay-wrapper">
-        <div class="title">CHAT SELECTS BIBITES</div>
+        <div class="title">SELECTION PROTOCOL</div>
 
         <div class="overlay-container">
             <div class="main-layout">

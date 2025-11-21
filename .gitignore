@@ -27,3 +27,5 @@ Thumbs.db
 config.yaml
 config.local.yaml
 .env
+.twitch_token
+*.tokens.json
