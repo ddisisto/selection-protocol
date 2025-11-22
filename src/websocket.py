@@ -4,12 +4,10 @@ WebSocket event handlers for Flask-SocketIO.
 Handles all real-time communication between clients and server including:
 - Client connection/disconnection
 - Vote updates and timer controls
-- Admin keypress commands
-- Cooldown state synchronization
+- Admin keypress commands (direct, no cooldowns)
 """
 
 from flask_socketio import emit
-from .cooldowns import start_cooldown, check_cooldown, get_cooldown_state_dict
 from .game_controller import send_keypress
 
 
@@ -38,9 +36,7 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
         log_action("Client connected", f"Total: {admin_state['connected_clients']}")
 
         # Send current states to newly connected client
-        # Note: vote_state is deprecated, using empty dict for backward compat
         emit('admin_state_update', admin_state)
-        emit('cooldown_update', get_cooldown_state_dict())
 
     @socketio.on('disconnect')
     def handle_disconnect():
@@ -107,28 +103,11 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
 
     @socketio.on('admin_send_keypress')
     def handle_admin_send_keypress(data):
-        """Handle admin keypress to game with cooldown enforcement."""
+        """Handle admin keypress to game (direct, no cooldowns)."""
         key = data.get('key', '')
-        cooldown_group = data.get('cooldown_group', None)
 
-        # Check cooldown if group is specified
-        if cooldown_group:
-            remaining = check_cooldown(cooldown_group)
-            if remaining > 0:
-                result = {
-                    'success': False,
-                    'error': f'Cooldown active: {int(remaining)}s remaining',
-                    'key': key
-                }
-                emit('keypress_result', result)
-                return
-
-        # Send the keypress
+        # Send the keypress directly
         result = send_keypress(key, log_action)
-
-        # Start cooldown if keypress succeeded
-        if result['success'] and cooldown_group:
-            start_cooldown(cooldown_group, log_action)
 
         # Update camera mode if it's a camera control
         if key in ['ctrl+g', 'ctrl+o', 'ctrl+r']:
@@ -142,9 +121,8 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
         # Send result back to client
         emit('keypress_result', result)
 
-        # Broadcast updated states including cooldowns
+        # Broadcast updated states
         broadcast_states()
-        socketio.emit('cooldown_update', get_cooldown_state_dict())
 
     @socketio.on('admin_pause_timer')
     def handle_admin_pause_timer():
@@ -200,11 +178,6 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
             admin_state[setting] = value
             log_action(f"Setting: {setting}", f"{'Enabled' if value else 'Disabled'}")
             broadcast_states()
-
-    @socketio.on('get_cooldown_state')
-    def handle_get_cooldown_state():
-        """Handle request for current cooldown state."""
-        emit('cooldown_update', get_cooldown_state_dict())
 
     # ============================================================
     # NEW ADMIN TESTING HANDLERS (vote_manager-based)
