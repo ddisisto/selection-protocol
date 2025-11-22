@@ -213,4 +213,31 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
         if action in ['k', 'l', 'x']:
             vote_manager.force_execute_action(action)
 
+    # ============================================================
+    # GAME COMMAND HANDLERS (from Twitch chat)
+    # ============================================================
+
+    @socketio.on('game_command')
+    def handle_game_command(data):
+        """
+        Handle game commands from Twitch chat (+/-/1/2/3/4/h).
+
+        These bypass voting and execute immediately.
+        NOTE: No rate limiting yet - add per-user cooldowns before live deployment.
+
+        Args:
+            data: Dict with 'username', 'command', 'keypress', 'timestamp'
+        """
+        username = data.get('username', 'Unknown')
+        command = data.get('command', '')
+        keypress = data.get('keypress', '')
+
+        # Send the keypress to game
+        result = send_keypress(keypress, log_action)
+
+        if result['success']:
+            log_action(f"Game command: {command}", f"From {username} (keypress: {keypress})")
+        else:
+            log_action(f"Game command FAILED: {command}", f"From {username} - {result.get('error', 'Unknown error')}")
+
     return broadcast_states

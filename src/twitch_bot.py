@@ -13,6 +13,7 @@ from twitchio.ext import commands
 from twitchio import eventsub, eventsub_
 from datetime import datetime
 import sys
+from .game_commands import is_valid_command, get_keypress_for_command
 
 
 class SelectionBot(commands.AutoBot):
@@ -62,6 +63,7 @@ class SelectionBot(commands.AutoBot):
         # SocketIO client (will be initialized in connect_to_flask)
         self.sio = None
         self.valid_actions = set()
+        self.game_commands_received = 0
 
     async def connect_to_flask(self):
         """
@@ -116,7 +118,9 @@ class SelectionBot(commands.AutoBot):
         print(f"Bot ID: {self.bot_id}")
         print(f"Channel ID: {self.channel_id}")
         print(f"Connected at: {self.start_time.strftime('%H:%M:%S')}")
-        print(f"\nListening for commands: k (kill), l (lay), x (extend)")
+        print(f"\nListening for:")
+        print(f"  Votes: k (kill), l (lay), x (extend)")
+        print(f"  Commands: +/- (zoom), 1/2/3/4 (info panels), h (hide UI)")
         print(f"{'='*60}\n")
 
         # Subscribe to chat messages for our channel
@@ -164,10 +168,10 @@ class SelectionBot(commands.AutoBot):
         # Log ALL chat messages
         print(f"[{timestamp}] {username}: {text}")
 
-        # Parse vote commands
+        # Parse commands
         text_lower = text.lower().strip()
 
-        # Check if message is a valid vote command
+        # Check if message is a valid vote command (k/l/x)
         if text_lower in self.valid_actions:
             self.votes_received += 1
 
@@ -183,6 +187,28 @@ class SelectionBot(commands.AutoBot):
                 })
             except Exception as e:
                 print(f"  ⚠ Failed to send vote to Flask: {e}")
+
+        # Check if message is a valid game command (+/-/1/2/3/4/h)
+        elif is_valid_command(text_lower):
+            self.game_commands_received += 1
+
+            # Get the keypress to send
+            keypress = get_keypress_for_command(text_lower)
+
+            # Log command (highlighted)
+            print(f"  → COMMAND: {text_lower} (keypress: {keypress})")
+
+            # Send command to Flask via SocketIO
+            # NOTE: No rate limiting yet - add per-user cooldowns before live deployment
+            try:
+                await self.sio.emit('game_command', {
+                    'username': username,
+                    'command': text_lower,
+                    'keypress': keypress,
+                    'timestamp': datetime.now().isoformat()
+                })
+            except Exception as e:
+                print(f"  ⚠ Failed to send game command to Flask: {e}")
 
     async def event_error(self, error, data=None):
         """Handle bot errors - print details and crash."""
@@ -232,7 +258,7 @@ class SelectionBot(commands.AutoBot):
             data = {
                 "broadcaster_id": self.channel_id,
                 "sender_id": self.bot_id,
-                "message": "Selection Protocol online. Democracy initialized. Vote: k (kill) | l (lay) | x (extend)"
+                "message": "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 1/2/3/4 (info) | h (hide UI)"
             }
 
             response = requests.post(url, headers=headers, json=data)
@@ -258,7 +284,7 @@ class SelectionBot(commands.AutoBot):
         while True:
             await asyncio.sleep(10)
             uptime = (datetime.now() - self.start_time).seconds
-            print(f"[Heartbeat] Uptime: {uptime}s | Messages: {self.messages_received} | Votes: {self.votes_received}")
+            print(f"[Heartbeat] Uptime: {uptime}s | Messages: {self.messages_received} | Votes: {self.votes_received} | Commands: {self.game_commands_received}")
 
     @commands.command(name='lineage')
     async def lineage_command(self, ctx):
