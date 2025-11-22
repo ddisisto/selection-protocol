@@ -181,7 +181,7 @@ class VoteManager:
         Recalculate timer limit based on current vote ratios.
 
         Called whenever a vote changes.
-        Adjusts time_remaining if new limit differs.
+        Adjusts time_remaining to match new limit.
         """
         counts = self.get_vote_counts()
         new_limit = self.get_timer_limit(counts['k'], counts['l'], counts['x'])
@@ -190,12 +190,10 @@ class VoteManager:
             old_limit = self.timer_limit
             self.timer_limit = new_limit
 
-            # Adjust time_remaining proportionally
-            # If limit increases, extend timer
-            # If limit decreases, accelerate countdown
+            # Set remaining time to new limit
+            # Timer extends/contracts based on vote uncertainty
             if self.time_remaining is not None:
-                # Simple approach: adjust remaining time based on limit change
-                self.time_remaining = min(self.time_remaining, new_limit)
+                self.time_remaining = new_limit
 
                 self.log_action(
                     "Timer adjusted",

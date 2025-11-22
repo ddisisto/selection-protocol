@@ -167,10 +167,20 @@ socket.on('vote_update', function(data) {
 
     // Update timer from SERVER (not local countdown)
     const timerEl = document.getElementById('time-remaining');
-    if (timerEl && data.time_remaining !== undefined) {
-        timerEl.textContent = data.time_remaining + 's';
-        timerEl.style.color = getTimerColor(data.time_remaining);
-        timerEl.style.textShadow = `0 0 20px ${getTimerColor(data.time_remaining)}80`;
+    if (timerEl) {
+        if (data.time_remaining === null || data.time_remaining === undefined) {
+            // No active timer - show "VOTE NOW!" prompt
+            timerEl.innerHTML = 'VOTE<br>NOW!';
+            timerEl.style.color = '#ffffff';
+            timerEl.style.fontSize = '36px';
+            timerEl.style.textShadow = '0 0 20px rgba(255, 255, 255, 0.5)';
+        } else {
+            // Active timer - show countdown
+            timerEl.textContent = data.time_remaining + 's';
+            timerEl.style.fontSize = '54px'; // Reset to normal size
+            timerEl.style.color = getTimerColor(data.time_remaining);
+            timerEl.style.textShadow = `0 0 20px ${getTimerColor(data.time_remaining)}80`;
+        }
     }
 
     // Update status
