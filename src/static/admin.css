@@ -1,0 +1,124 @@
+/**
+ * admin.css - Admin Panel Components
+ *
+ * Uses base.css design tokens
+ * BEM-like naming: block__element--modifier
+ */
+
+/* ============================================================
+   ADMIN PANEL LAYOUT
+   ============================================================ */
+
+.admin-panel {
+    width: 300px;
+    height: 100vh;
+    background: var(--color-bg-secondary);
+    border-right: 3px solid var(--color-accent);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   ADMIN SECTIONS
+   ============================================================ */
+
+.admin-section {
+    border-bottom: 1px solid var(--color-border-secondary);
+    padding: var(--space-4);
+}
+
+.admin-section__title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wide);
+    margin-bottom: var(--space-3);
+    border-bottom: 1px solid var(--color-accent);
+    padding-bottom: var(--space-1);
+}
+
+/* ============================================================
+   ADMIN VOTE DISPLAY
+   ============================================================ */
+
+.admin-vote-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-bg-tertiary);
+    padding: var(--space-3);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-2);
+}
+
+.admin-vote-display__label {
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+}
+
+.admin-vote-display__count {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+}
+
+.admin-vote-display__count--k {
+    color: var(--color-kill);
+}
+
+.admin-vote-display__count--l {
+    color: var(--color-lay);
+}
+
+.admin-vote-display__count--x {
+    color: var(--color-extend);
+}
+
+/* ============================================================
+   ADMIN CONTROLS
+   ============================================================ */
+
+.admin-vote-controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.admin-timer-controls {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.admin-timer-controls .btn {
+    margin-bottom: 0;
+    flex: 1;
+}
+
+/* ============================================================
+   ADMIN BUTTONS (extends base.css .btn)
+   ============================================================ */
+
+.admin-btn {
+    width: 100%;
+    margin-bottom: var(--space-2);
+}
+
+/* Cooldown overlay on buttons */
+.admin-btn__cooldown {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-error);
+    pointer-events: none;
+}

@@ -1,0 +1,394 @@
+/**
+ * base.css - Design System Foundation
+ *
+ * Contains:
+ * - CSS custom properties (design tokens)
+ * - Reset/normalize
+ * - Utility classes
+ * - Shared base components
+ */
+
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+
+:root {
+    /* Colors - Semantic */
+    --color-bg-primary: #000000;
+    --color-bg-secondary: #1a1a1a;
+    --color-bg-tertiary: #2a2a2a;
+    --color-bg-elevated: #333333;
+
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #aaaaaa;
+    --color-text-tertiary: #888888;
+
+    --color-border-primary: #555555;
+    --color-border-secondary: #333333;
+
+    /* Colors - Brand */
+    --color-accent: #00ff88;
+    --color-accent-dim: rgba(0, 255, 136, 0.8);
+
+    /* Colors - Actions */
+    --color-kill: #ff6666;
+    --color-kill-dark: #cc0000;
+    --color-kill-light: #ff9999;
+
+    --color-lay: #6666ff;
+    --color-lay-dark: #0033cc;
+    --color-lay-light: #9999ff;
+
+    --color-extend: #00ff88;
+    --color-extend-dark: #ccaa00;
+    --color-extend-light: #99ffaa;
+
+    /* Colors - Status */
+    --color-success: #00ff88;
+    --color-error: #ff3333;
+    --color-warning: #ffdd33;
+    --color-info: #3366ff;
+
+    /* Spacing Scale (8px base) */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+
+    /* Typography */
+    --font-family-base: monospace, 'Arial', sans-serif;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-base: 14px;
+    --font-size-lg: 18px;
+    --font-size-xl: 24px;
+    --font-size-2xl: 36px;
+    --font-size-3xl: 54px;
+
+    --font-weight-normal: 400;
+    --font-weight-bold: 700;
+    --font-weight-black: 900;
+
+    --line-height-tight: 1;
+    --line-height-normal: 1.5;
+
+    --letter-spacing-wide: 1px;
+    --letter-spacing-wider: 8px;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 15px;
+    --radius-full: 50%;
+
+    /* Shadows */
+    --shadow-glow-accent: 0 0 20px var(--color-accent-dim);
+
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.4s ease;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--color-bg-primary);
+    font-family: var(--font-family-base);
+    color: var(--color-text-primary);
+    overflow: hidden;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* ============================================================
+   LAYOUT UTILITIES
+   ============================================================ */
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.items-end {
+    align-items: flex-end;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-1 { gap: var(--space-1); }
+.gap-2 { gap: var(--space-2); }
+.gap-3 { gap: var(--space-3); }
+.gap-4 { gap: var(--space-4); }
+.gap-5 { gap: var(--space-5); }
+.gap-6 { gap: var(--space-6); }
+
+.flex-1 {
+    flex: 1;
+}
+
+.flex-shrink-0 {
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   GRID UTILITIES
+   ============================================================ */
+
+.grid {
+    display: grid;
+}
+
+.grid-cols-2 {
+    grid-template-columns: 1fr 1fr;
+}
+
+.grid-cols-3 {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* ============================================================
+   SPACING UTILITIES
+   ============================================================ */
+
+.p-2 { padding: var(--space-2); }
+.p-3 { padding: var(--space-3); }
+.p-4 { padding: var(--space-4); }
+.p-5 { padding: var(--space-5); }
+.p-6 { padding: var(--space-6); }
+
+.mb-2 { margin-bottom: var(--space-2); }
+.mb-3 { margin-bottom: var(--space-3); }
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+
+/* ============================================================
+   TEXT UTILITIES
+   ============================================================ */
+
+.text-xs { font-size: var(--font-size-xs); }
+.text-sm { font-size: var(--font-size-sm); }
+.text-base { font-size: var(--font-size-base); }
+.text-lg { font-size: var(--font-size-lg); }
+.text-xl { font-size: var(--font-size-xl); }
+.text-2xl { font-size: var(--font-size-2xl); }
+.text-3xl { font-size: var(--font-size-3xl); }
+
+.font-bold { font-weight: var(--font-weight-bold); }
+.font-black { font-weight: var(--font-weight-black); }
+
+.uppercase {
+    text-transform: uppercase;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.tracking-wide { letter-spacing: var(--letter-spacing-wide); }
+.tracking-wider { letter-spacing: var(--letter-spacing-wider); }
+
+/* ============================================================
+   SHARED COMPONENTS
+   ============================================================ */
+
+/* Buttons - Base */
+.btn {
+    padding: var(--space-3);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    border: 2px solid;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-transform: uppercase;
+    color: var(--color-text-primary);
+    background: var(--color-bg-elevated);
+    position: relative;
+}
+
+.btn:hover:not(:disabled) {
+    transform: scale(1.02);
+    filter: brightness(1.2);
+}
+
+.btn:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    background: #222222;
+}
+
+/* Button Variants */
+.btn--kill {
+    background: var(--color-kill-dark);
+    border-color: var(--color-kill);
+}
+
+.btn--lay {
+    background: var(--color-lay-dark);
+    border-color: var(--color-lay);
+}
+
+.btn--extend {
+    background: var(--color-extend-dark);
+    border-color: var(--color-warning);
+    color: #000000;
+}
+
+.btn--camera {
+    background: #555555;
+    border-color: #888888;
+    font-size: var(--font-size-sm);
+    padding: var(--space-2) var(--space-3);
+}
+
+.btn--small {
+    padding: var(--space-2);
+    font-size: var(--font-size-sm);
+}
+
+.btn--full {
+    width: 100%;
+}
+
+/* Input Elements */
+input[type="number"] {
+    width: 100%;
+    padding: var(--space-2);
+    background: var(--color-bg-tertiary);
+    border: 1px solid var(--color-border-primary);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--space-2);
+}
+
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: var(--space-2);
+    cursor: pointer;
+}
+
+/* Checkbox Row */
+.checkbox-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--space-2);
+    cursor: pointer;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-fast);
+}
+
+.checkbox-row:hover {
+    background: var(--color-bg-tertiary);
+}
+
+/* Status Display */
+.status-line {
+    display: flex;
+    justify-content: space-between;
+    background: var(--color-bg-tertiary);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-2);
+    font-size: var(--font-size-sm);
+}
+
+.status-line__label {
+    color: var(--color-text-tertiary);
+}
+
+.status-line__value {
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-bold);
+}
+
+.status-line__value--connected {
+    color: var(--color-success);
+}
+
+.status-line__value--disconnected {
+    color: var(--color-error);
+}
+
+/* Log Container */
+.log-container {
+    background: #0a0a0a;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2);
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: var(--font-size-xs);
+    font-family: monospace;
+}
+
+.log-entry {
+    margin-bottom: var(--space-1);
+    color: var(--color-text-secondary);
+}
+
+.log-entry:first-child {
+    color: var(--color-accent);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes vote-increment {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.2);
+        filter: brightness(1.5);
+    }
+    100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+.animate-vote-increment {
+    animation: vote-increment var(--transition-slow) ease;
+}

@@ -2,8 +2,14 @@
 
 {% block title %}Selection Protocol - Overlay{% endblock %}
 
-{% block body_style %}
-display: block;
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('static', filename='overlay.css') }}">
+<style>
+/* Override body flex for overlay-only view */
+body {
+    display: block;
+}
+</style>
 {% endblock %}
 
 {% block content %}

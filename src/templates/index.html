@@ -2,6 +2,11 @@
 
 {% block title %}Selection Protocol - Overlay + Admin{% endblock %}
 
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='overlay.css') }}">
+{% endblock %}
+
 {% block content %}
 {% include "admin_panel.html" %}
 {% include "overlay.html" %}

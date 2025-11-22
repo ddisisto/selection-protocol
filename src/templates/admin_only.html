@@ -2,8 +2,14 @@
 
 {% block title %}Selection Protocol - Admin Panel{% endblock %}
 
-{% block body_style %}
-display: block;
+{% block stylesheets %}
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+<style>
+/* Override body flex for admin-only view */
+body {
+    display: block;
+}
+</style>
 {% endblock %}
 
 {% block content %}

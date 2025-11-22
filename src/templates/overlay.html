@@ -1,34 +1,34 @@
 <!-- Overlay Wrapper - Right Side (visible in OBS) -->
 <div class="overlay-wrapper">
-    <div class="title">SELECTION PROTOCOL</div>
+    <div class="overlay-title">SELECTION PROTOCOL</div>
 
     <div class="overlay-container">
-        <div class="main-layout">
-            <div class="pie-chart-container">
+        <div class="overlay-main-layout">
+            <div class="overlay-pie-chart">
                 <canvas id="pieChart" width="140" height="140"></canvas>
-                <div class="timer-display" id="time-remaining">30s</div>
+                <div class="overlay-timer" id="time-remaining">30s</div>
             </div>
 
-            <div class="right-section">
-                <div class="votes-container">
-                    <div class="vote-item l">
-                        <span class="vote-label l">L: Lay</span>
-                        <span class="vote-number l" id="l-count">0</span>
-                        <span class="vote-claimant" id="l-claimant"></span>
+            <div class="overlay-right-section">
+                <div class="overlay-votes-container">
+                    <div class="overlay-vote-item overlay-vote-item--l">
+                        <span class="overlay-vote-item__label overlay-vote-item__label--l">L: Lay</span>
+                        <span class="overlay-vote-item__number overlay-vote-item__number--l" id="l-count">0</span>
+                        <span class="overlay-vote-item__claimant" id="l-claimant"></span>
                     </div>
 
-                    <div class="vote-item x">
-                        <span class="vote-label x">X: Extend</span>
-                        <span class="vote-number x" id="x-count">0</span>
+                    <div class="overlay-vote-item overlay-vote-item--x">
+                        <span class="overlay-vote-item__label overlay-vote-item__label--x">X: Extend</span>
+                        <span class="overlay-vote-item__number overlay-vote-item__number--x" id="x-count">0</span>
                     </div>
 
-                    <div class="vote-item k">
-                        <span class="vote-label k">K: Kill</span>
-                        <span class="vote-number k" id="k-count">0</span>
+                    <div class="overlay-vote-item overlay-vote-item--k">
+                        <span class="overlay-vote-item__label overlay-vote-item__label--k">K: Kill</span>
+                        <span class="overlay-vote-item__number overlay-vote-item__number--k" id="k-count">0</span>
                     </div>
                 </div>
 
-                <div class="status" id="status">Waiting for votes...</div>
+                <div class="overlay-status" id="status">Waiting for votes...</div>
             </div>
         </div>
     </div>
