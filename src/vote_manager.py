@@ -7,6 +7,7 @@ and broadcasts state updates to overlay via SocketIO.
 
 from datetime import datetime
 from .actions import ACTIONS, is_valid_action
+from .game_controller import send_keypress
 
 
 class VoteManager:
@@ -47,6 +48,11 @@ class VoteManager:
         self.cycle_active = False
         self.cycle_start_time = None
 
+        # Timer system (dynamic, ratio-based)
+        self.timer_limit = None      # Target time in seconds (30-120s)
+        self.time_remaining = None   # Current countdown value
+        self.timer_started = False   # Whether timer is running
+
     def cast_vote(self, username, vote, timestamp=None):
         """
         Record or update a vote from a user.
@@ -74,6 +80,14 @@ class VoteManager:
 
         # Update first-L claimant logic
         self._update_first_l_claim(username, vote, previous_vote, timestamp)
+
+        # Start timer on first K or L vote (X requires K/L to unlock)
+        if not self.timer_started and vote in ['k', 'l']:
+            self._start_timer()
+
+        # Recalculate timer limit based on new ratios
+        if self.timer_started:
+            self._update_timer_limit()
 
         # Log the vote
         self.log_action(f"Vote: {username}", f"{vote.upper()}")
@@ -147,6 +161,94 @@ class VoteManager:
 
         return counts
 
+    def _start_timer(self):
+        """
+        Start the vote timer.
+
+        Called when first K or L vote is cast.
+        Initializes timer at 30s (1:0:0 ratio).
+        """
+        counts = self.get_vote_counts()
+        self.timer_limit = self.get_timer_limit(counts['k'], counts['l'], counts['x'])
+        self.time_remaining = self.timer_limit
+        self.timer_started = True
+        self.log_action("Timer started", f"{self.timer_limit}s")
+
+    def _update_timer_limit(self):
+        """
+        Recalculate timer limit based on current vote ratios.
+
+        Called whenever a vote changes.
+        Adjusts time_remaining if new limit differs.
+        """
+        counts = self.get_vote_counts()
+        new_limit = self.get_timer_limit(counts['k'], counts['l'], counts['x'])
+
+        if new_limit != self.timer_limit:
+            old_limit = self.timer_limit
+            self.timer_limit = new_limit
+
+            # Adjust time_remaining proportionally
+            # If limit increases, extend timer
+            # If limit decreases, accelerate countdown
+            if self.time_remaining is not None:
+                # Simple approach: adjust remaining time based on limit change
+                self.time_remaining = min(self.time_remaining, new_limit)
+
+                self.log_action(
+                    "Timer adjusted",
+                    f"{old_limit}s → {new_limit}s (remaining: {self.time_remaining}s)"
+                )
+
+    def get_timer_limit(self, k_count, l_count, x_count):
+        """
+        Calculate timer limit based on vote ratios.
+
+        Maps vote diversity and X dominance to 30-120s scale:
+        - Unanimous (1:0:0) → 30s  (quick decision)
+        - Split 2-way (1:1:0) → 60s  (debate)
+        - 3-way split (1:1:1) → 90s  (complex)
+        - X dominant (1:2+:1) → 120s  (extended deliberation)
+
+        Args:
+            k_count: Number of K votes
+            l_count: Number of L votes
+            x_count: Number of X votes
+
+        Returns:
+            int: Timer limit in seconds (30-120)
+        """
+        total = k_count + l_count + x_count
+
+        if total == 0:
+            return 30  # Default for empty state
+
+        # Count how many vote types are present (diversity)
+        types_present = sum([k_count > 0, l_count > 0, x_count > 0])
+
+        # Calculate X percentage
+        x_percent = (x_count / total) * 100 if total > 0 else 0
+
+        # Base time on diversity
+        if types_present == 1:
+            # Unanimous - quick decision
+            base_time = 30
+        elif types_present == 2:
+            # 2-way split - moderate debate
+            base_time = 60
+        else:  # types_present == 3
+            # 3-way split - complex deliberation
+            base_time = 90
+
+        # Extend time if X is dominant (>= 40%)
+        if x_percent >= 40:
+            # Scale from base_time to 120s based on X dominance
+            # 40% X = base_time, 60%+ X = 120s
+            x_boost = min((x_percent - 40) / 20, 1.0)  # 0.0 to 1.0
+            base_time = base_time + (120 - base_time) * x_boost
+
+        return int(base_time)
+
     def get_vote_state(self):
         """
         Get complete vote state for broadcasting.
@@ -163,21 +265,81 @@ class VoteManager:
             'total_votes': len(self.votes),
             'first_l_claimant': self.first_l_claimant,
             'voting_active': self.cycle_active,
+            'time_remaining': self.time_remaining,
             # Additional metadata
             'voter_count': len(self.votes),
             'timestamp': datetime.now().isoformat()
         }
+
+    def tick(self):
+        """
+        Timer tick - called every second by background task.
+
+        Decrements time_remaining and checks for expiry.
+        When timer hits 0, executes winner and resets round.
+        """
+        if not self.timer_started or self.time_remaining is None:
+            return
+
+        self.time_remaining -= 1
+
+        # Broadcast updated timer
+        self._broadcast_state()
+
+        # Check for expiry
+        if self.time_remaining <= 0:
+            self.log_action("Timer expired", "Resolving vote")
+            self._execute_winner()
+
+    def _execute_winner(self):
+        """
+        Execute the winning action and reset for next round.
+
+        Called when timer expires.
+        Determines winner, sends keypress if K or L, resets votes.
+        """
+        winner = self.get_winner()
+
+        if winner == 'k':
+            self.log_action("Winner: K", "Sending Delete keypress")
+            result = send_keypress('Delete', self.log_action)
+            if result['success']:
+                print("✓ EXECUTED: Delete keypress (K wins)")
+            else:
+                print(f"✗ FAILED: Delete keypress - {result.get('error', 'Unknown error')}")
+        elif winner == 'l':
+            claimant = self.first_l_claimant or "Unknown"
+            self.log_action("Winner: L", f"Sending Insert keypress (Claimant: {claimant})")
+            result = send_keypress('Insert', self.log_action)
+            if result['success']:
+                print(f"✓ EXECUTED: Insert keypress (L wins, claimant: {claimant})")
+            else:
+                print(f"✗ FAILED: Insert keypress - {result.get('error', 'Unknown error')}")
+        else:
+            # X wins or tie
+            self.log_action("Winner: X", "No action (extend)")
+            print("→ No action (X wins)")
+
+        # Reset for next round
+        self.reset_votes()
 
     def reset_votes(self):
         """
         Reset all votes for a new cycle.
 
         Called at the start of each new voting cycle.
+        Clears votes, timer state, and waits for next round to start.
         """
         self.votes.clear()
         self.first_l_claimant = None
         self.first_l_timestamp = None
-        self.log_action("Votes reset", "New cycle")
+
+        # Reset timer state (waiting for first K/L vote)
+        self.timer_limit = None
+        self.time_remaining = None
+        self.timer_started = False
+
+        self.log_action("Votes reset", "Awaiting next round")
         self._broadcast_state()
 
     def start_cycle(self):
@@ -197,27 +359,39 @@ class VoteManager:
 
     def get_winner(self):
         """
-        Determine winner of current vote cycle.
+        Determine winner of current vote cycle per VOTING_RULES.md.
+
+        Rules:
+        - K wins IF: K > 33% AND K > L
+        - L wins IF: L > 33% AND L > K
+        - X wins (no action) IF: Neither K nor L > 33%, OR K = L (tie)
 
         Returns:
-            str: Winning action code ('k', 'l', 'x', or None for tie/no votes)
+            str: Winning action code ('k', 'l', or 'x')
         """
         counts = self.get_vote_counts()
+        total = sum(counts.values())
 
-        # No votes = default to extend
-        if sum(counts.values()) == 0:
+        # No votes = X wins (no action)
+        if total == 0:
             return 'x'
 
-        # Find max count
-        max_count = max(counts.values())
+        k_count = counts['k']
+        l_count = counts['l']
 
-        # Check for tie
-        winners = [action for action, count in counts.items() if count == max_count]
+        k_percent = (k_count / total) * 100
+        l_percent = (l_count / total) * 100
 
-        if len(winners) > 1:
-            return None  # Tie
-        else:
-            return winners[0]
+        # K wins: K > 33% AND K > L
+        if k_percent > 33 and k_count > l_count:
+            return 'k'
+
+        # L wins: L > 33% AND L > K
+        if l_percent > 33 and l_count > k_count:
+            return 'l'
+
+        # X wins: Neither K nor L > 33%, OR K = L (tie)
+        return 'x'
 
     def get_enabled_actions(self):
         """

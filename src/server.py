@@ -59,6 +59,30 @@ vote_state = {}  # Deprecated - vote_manager owns state now
 broadcast_states = setup_socketio_handlers(socketio, vote_state, admin_state, log_action)
 
 
+# Background timer task
+def timer_background_task():
+    """
+    Background task that ticks the vote timer every second.
+
+    Runs continuously, calling vote_manager.tick() to decrement timer
+    and check for expiry/execution.
+    """
+    import time
+    while True:
+        time.sleep(1)
+        vote_manager.tick()
+
+
+# Start background timer when socketio is ready
+@socketio.on('connect')
+def handle_first_connect():
+    """Start background timer on first client connection."""
+    if not hasattr(handle_first_connect, 'timer_started'):
+        socketio.start_background_task(timer_background_task)
+        handle_first_connect.timer_started = True
+        print("Background timer task started")
+
+
 @app.route('/')
 def index():
     """Serve the combined admin + overlay page."""
