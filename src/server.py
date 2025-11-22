@@ -16,6 +16,7 @@ from datetime import datetime
 
 from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
+from .game_controller import discover_game_window, set_game_window_id
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -169,6 +170,16 @@ if __name__ == '__main__':
     print("=" * 60)
     print("Selection Protocol - Overlay Server")
     print("=" * 60)
+
+    # Auto-discover game window (fail fast if not found)
+    try:
+        window_id = discover_game_window()
+        set_game_window_id(window_id)
+    except RuntimeError as e:
+        print(f"\n✗ ERROR: {e}")
+        print("\nServer startup aborted. Please fix the issue and try again.\n")
+        exit(1)
+
     print("\nOverlay URL: http://localhost:5000")
     print("\nAdd this URL as a Browser Source in OBS:")
     print("  1. Add new Browser Source")

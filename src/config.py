@@ -1,11 +1,10 @@
 """
 Configuration values for the Twitch Plays God overlay server.
 
-Contains game window settings, cooldown durations, and other configuration constants.
-"""
+Contains cooldown durations and other configuration constants.
 
-# Game window configuration
-GAME_WINDOW_ID = 132120577
+Note: Game window ID is auto-discovered at runtime via game_controller.discover_game_window()
+"""
 
 # Cooldown durations in seconds
 COOLDOWN_DURATIONS = {
