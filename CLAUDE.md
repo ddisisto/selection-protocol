@@ -1,334 +1,299 @@
-# CLAUDE.md - AI Assistant Handover
+# CLAUDE.md - AI Assistant Handover & Methodology
 
-**Purpose:** Fast context load for AI assistants jumping into this codebase.
+**Purpose:** Fast context load + repeatable patterns for working on this codebase.
 
-**Last Updated:** 2025-11-21 (Session 3)
-**Current Phase:** Phase 1 (5/6 complete - overlay display needed)
+**Last Updated:** 2025-11-22 (Session 5)
+**Sessions Completed:** 5
 
 ---
 
-## 1. Quick Context Load
+## Quick Orientation
 
 **What is this?**
-Twitch streaming experiment: chat votes K/L/X (Kill/Lay/Extend) every 60s on organisms in [The Bibites](https://thebibites.com). First L voter claims lineage naming rights if L wins. Democracy meets evolution meets competitive dynasty building.
+Twitch streaming experiment where chat votes K/L/X (Kill/Lay/Extend) on organisms in [The Bibites](https://thebibites.com). First L voter claims lineage naming rights. Democracy meets evolution meets competitive dynasty building.
 
-**Current state:**
-- ✅ Full modular codebase in `src/` (10 files, ~2000 lines)
-- ✅ Overlay server operational (Flask + SocketIO)
-- ✅ Admin panel with xdotool automation working
-- ✅ TwitchIO EventSub bot receiving chat messages
-- ✅ Vote manager tracking k/l/x votes + first-L claimant logic
-- ✅ End-to-end vote flow: chat → bot → Flask → vote_manager
-- ❌ Overlay HTML doesn't display votes yet (broadcasts work, display missing)
+**Current State:**
+Phase 1 essentially complete. Dynamic timer (30-120s), automated execution, vote display working. Ready for live testing and polish.
 
-**Key files:**
-- [README.md](README.md) - Project overview & quick start
-- [HANDOVER.md](HANDOVER.md) - Current state + next session tasks
-- [PROJECT_BRIEF.md](PROJECT_BRIEF.md) - Full technical spec
-- [CONTEXT.md](CONTEXT.md) - Design decisions & philosophy
-- This file - Your fast-track orientation
+**Full Context:**
+@README.md
 
 ---
 
-## 2. Code Architecture (Current State)
+## How to Work on This Project
 
+### Core Values (User's Preferences)
+
+**Fail-Fast Philosophy:**
+- Strict validation, clear error messages
+- No fallbacks to hardcoded values
+- Example: Window auto-discovery fails if count != 1 (not found OR duplicates)
+- Better to crash with explanation than silently do wrong thing
+
+**Clean Code:**
+- DRY - eliminate duplication aggressively
+- Single source of truth
+- Extract patterns (action registry, design tokens, etc.)
+- Refactor when you see duplication
+
+**Professional Objectivity:**
+- Concise communication, no superlatives
+- Technical accuracy over validation
+- No unnecessary praise or emojis (unless explicitly requested)
+- Focus on facts and problem-solving
+
+**Direct & Immediate (Admin Panel):**
+- Admin actions should be instant (no cooldowns, no delays)
+- It's the admin panel - user has full control
+- Cooldowns/delays are for viewer commands, not admin
+
+### Work Patterns That Succeed
+
+**1. Use TodoWrite Proactively**
+- Create todos at start of complex tasks
+- Mark in_progress when starting
+- Complete immediately when done (don't batch)
+- Exactly ONE todo in_progress at a time
+- Helps track progress, shows user what's happening
+
+**2. Parallel Tool Use**
+- When tools are independent, call them in same message
+- Example: Read multiple files, run multiple bash commands
+- Maximize efficiency, minimize round-trips
+
+**3. Commit Messages (Detailed & Structured)**
 ```
-src/
-├── server.py           # Flask app, main entry point (working)
-├── overlay.py          # HTML/CSS/JS template (needs vote display update)
-├── admin_panel.py      # Left-sidebar admin UI (working)
-├── websocket.py        # SocketIO handlers (working)
-├── game_controller.py  # xdotool keypress → The Bibites (working)
-├── cooldowns.py        # Cooldown enforcement (working)
-├── vote_manager.py     # Vote tracking + first-L logic (working)
-├── actions.py          # Action registry (k/l/x definitions) (working)
-├── twitch_bot.py       # TwitchIO EventSub integration (working)
-├── oauth_flow.py       # OAuth authorization + token refresh (working)
-└── config.py           # Game configuration (working)
+Title: What changed (imperative, 50 chars)
+
+**Problem:** What issue this solves
+**Root Cause:** Why it happened (with file:line references)
+**Solution:** How we fixed it
+**Implementation:** Key changes (bullet points)
+**Testing:** What was verified
+
+Include code snippets showing before/after when useful.
+
+🔥 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-**Integration flow (working end-to-end):**
-```
-Twitch Chat → EventSub Bot → SocketIO → Flask → Vote Manager
-                                                      ↓
-                                         Broadcasts vote_update
-                                                      ↓
-                              Overlay (needs HTML) + Admin Panel
-                                                      ↓
-                                         game_controller.py → xdotool
-                                                      ↓
-                                         The Bibites (Window ID: 132120577)
-```
+**4. Documentation Workflow**
+- End of session: Add summary to HANDOVER.md
+- Archive: `HANDOVER.md` → `docs/archive/HANDOVER-SESSION-N.md`
+- Create fresh HANDOVER.md for next session
+- CLAUDE.md (this file) grows organically, captures patterns
+
+**5. Testing Approach**
+- Write code first
+- Test manually (user tests while server hot-reloads)
+- Iterate based on feedback
+- No premature abstraction - wait for patterns to emerge
+
+### Common Gotchas
+
+**Linux/Proton Quirks:**
+- The Bibites runs via Steam/Proton (Wine layer)
+- Window ID changes on game restart
+- Auto-discovery handles this (searches by name)
+
+**Timer System:**
+- Elapsed-time based (wall clock immutable)
+- `time_remaining = target - elapsed`
+- New votes change target, but can't "undo" elapsed time
+- Prevents indefinite delay
+
+**First-L Claimant Logic:**
+- First L voter by timestamp gets claim
+- Switching away from L loses claim
+- Switching back to L goes to back of queue (new timestamp)
+- Test with multiple accounts before trusting
+
+### User Communication Patterns
+
+**Effective:**
+- "I notice X, suspect Y, here's my proposed fix Z"
+- "This broke because [root cause], fix is [solution]"
+- "Three options: A (simple), B (robust), C (complex). Recommend B because..."
+
+**Ineffective:**
+- "Great job!", "Perfect!", excessive enthusiasm
+- Long explanations without code/examples
+- Vague status updates without specifics
 
 ---
 
-## 3. Current Development State
+## Current Session State
 
-**Phase 1 Progress: 5/6 Complete**
-- ✅ Overlay server (Flask + SocketIO + admin panel)
-- ✅ xdotool automation (Linux/Proton tested)
-- ✅ OAuth flow (authorization code grant + token refresh)
-- ✅ TwitchIO EventSub bot (replaces deprecated IRC)
-- ✅ Vote manager (k/l/x tracking, first-L claimant logic)
-- ❌ Vote display in overlay (data broadcasts, HTML needs update)
-
-**Phase 2 (Not Started):**
-- Automated vote execution (currently manual via admin panel)
-- Vote cycle timer (60s cycles)
-- Tie-break window (10s after tie detected)
-
-**Phase 3 (Not Started):**
-- Lineage tagging system (username → game tag before Insert)
-
-**Phase 4 (Not Started):**
-- Community features (!lineage command, leaderboards)
+@HANDOVER.md
 
 ---
 
-## 4. Critical Design Decisions (Don't Change Without Reason)
+## Vote Mechanics (Locked Specification)
 
-**Vote mechanics:**
-- One person, one vote (latest replaces previous)
-- First L voter gets naming claim, loses it if they switch away
-- Ties → 10s tie-break window, first L during tie-break steals lineage
-- Empty stream = auto-extend (X behavior)
-
-**Why K/L/X not K/I:**
-- K = Kill (Delete key), L = Lay egg (Insert key), X = Extend (do nothing)
-- Three options create strategic depth vs binary choice
-- "L" visually distinct from "I" in chat
-
-**Action registry pattern:**
-- Single source of truth in `src/actions.py`
-- Bot fetches enabled actions from Flask at startup (DRY)
-- Extensible: add new actions without changing bot code
-- Each action: name, description, keypress, cooldown, enabled flag
-
-**Cooldown system (battle-tested in prototype):**
-- Primary actions (Del/Ins): 15s shared
-- Camera modes: 10s shared
-- Zoom: 5s individual
-- Extend: 30s cooldown (Phase 2)
-
-**Window targeting (Linux/Proton specific):**
-- Window ID: `132120577` (confirmed working)
-- PID: `1377474`
-- xdotool delivers keypresses with zero lag
-
-**EventSub over IRC:**
-- IRC deprecated by Twitch (as of 2024)
-- EventSub is official, stable, cleaner JSON payloads
-- Requires OAuth user access tokens (not client credentials)
-
-**Philosophy:**
-- Process over outcomes (build systems, not one-offs)
-- Democracy at any scale (1 viewer or 1000)
-- Scientific experiment aesthetic (terminal/data presentation)
-- Organic discovery (no marketing blitz)
+@docs/VOTING_RULES.md
 
 ---
 
-## 5. Common Tasks
+## System Architecture
 
-### First-Time Setup
+**Key Components:**
+- **Flask Server** ([src/server.py](src/server.py)) - Main entry, routes, background timer
+- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking, timer logic, execution
+- **Game Controller** ([src/game_controller.py](src/game_controller.py)) - Window discovery, xdotool keypresses
+- **Twitch Bot** ([src/twitch_bot.py](src/twitch_bot.py)) - EventSub integration, OAuth flow
+- **WebSocket** ([src/websocket.py](src/websocket.py)) - SocketIO event handlers
+- **Actions** ([src/actions.py](src/actions.py)) - Action registry (DRY)
+
+**Data Flow:**
+```
+Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager
+                                                             ↓
+                                                  Broadcasts vote_update
+                                                             ↓
+                                            Overlay + Admin Panel (display)
+                                                             ↓
+                                            Game Controller → xdotool
+                                                             ↓
+                                            The Bibites (auto-discovered window)
+```
+
+**Timer System (Elapsed-Time Based):**
+```python
+# Round starts:
+round_start_time = datetime.now()
+target_duration = get_timer_limit(ratios)  # 30-120s via entropy
+
+# Each tick:
+elapsed = now() - round_start_time
+time_remaining = max(0, target - elapsed)
+
+# New vote:
+target_duration = get_timer_limit(new_ratios)  # Target changes
+# time_remaining recalculates on next tick (always decreasing)
+
+# Expiry:
+if elapsed >= target_duration:
+    execute_winner()
+```
+
+**Design Patterns:**
+- **Server-authoritative:** Zero client-side state (timers, counters)
+- **Single source of truth:** Action registry, design tokens (CSS variables)
+- **Fail-fast validation:** Window discovery, vote validation, etc.
+- **DRY composition:** Templates use @includes, CSS uses custom properties
+
+---
+
+## Philosophy & Design Decisions
+
+@CONTEXT.md
+
+---
+
+## Quick Reference
+
+### Starting the System
 ```bash
-# Clone and setup
-cd selection-protocol
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# Configure Twitch OAuth (first time only)
-cp config.yaml.example config.yaml
-# Edit config.yaml with your Twitch app credentials from:
-# https://dev.twitch.tv/console/apps
-```
-
-### Running the System
-```bash
-# Terminal 1: Overlay server (Flask + admin panel)
+# Terminal 1: Server (requires game running first for window discovery)
 source .venv/bin/activate
 python -m src.server
 # → http://localhost:5000
 
-# Terminal 2: Twitch bot (EventSub)
-python -m src.twitch_bot --test  # 30s test mode
-python -m src.twitch_bot          # daemon mode
-
-# Browser opens for OAuth authorization on first run
-# Token cached to .twitch_token for future runs
+# Terminal 2: Bot (optional, for Twitch integration)
+python -m src.twitch_bot --test  # 30s test
+python -m src.twitch_bot          # daemon
 ```
 
 ### Testing Vote Flow
 ```bash
-# With both server and bot running:
-# 1. Type "k", "l", or "x" in your Twitch chat
-# 2. Bot logs: "username: k" → "VOTE: K"
-# 3. Flask logs: "Vote recorded: username → K"
-# 4. Vote manager updates counts, tracks first-L claimant
-# 5. Overlay receives vote_update broadcast (but doesn't display yet)
+# Admin panel (left sidebar):
+# Click "l+" → adds test vote
+# Click "k+" → adds test vote
+# Watch timer adjust, overlay update
+# Click "L" → force execute Lay (Insert keypress)
 ```
 
-### Checking Bot Status
-```bash
-# Bot startup sequence:
-# 1. Connects to Flask (exits if Flask not running)
-# 2. Fetches enabled actions from Flask (k/l/x)
-# 3. Connects to Twitch EventSub
-# 4. Announces to chat: "Selection Protocol online..."
-# 5. Receives votes → sends to Flask → vote_manager tracks
-
-# Admin panel shows bot status:
-# - Twitch Bot: Active (green) / Inactive (gray)
-```
+### File Locations
+- **Templates:** `src/templates/*.html`
+- **Static assets:** `src/static/*.{js,css}`
+- **Docs:** `docs/*.md`
+- **Archived handovers:** `docs/archive/HANDOVER-SESSION-*.md`
 
 ---
 
-## 6. Gotchas & Pitfalls
+## Growth & Learning
 
-### Linux/Proton Quirks
-- The Bibites runs via Steam/Proton (Wine layer)
-- Window ID can change on game restart (check with `xdotool search --name "The Bibites"`)
-- xdotool requires window focus, game stays focused during stream
+**Session-to-Session Patterns:**
 
-### First-L Claim Logic (Subtle)
-```
-User votes L → gets claim
-User changes to K or X → loses claim to next L voter
-User changes from K to L → gets claim if no current claimant
-Multiple L voters → only first by timestamp has claim
+**Session 3:**
+- EventSub integration (IRC deprecated)
+- Vote manager foundation
+- End-to-end vote flow
 
-Test this with multiple accounts before trusting it!
-```
+**Session 4:**
+- Server-authoritative refactor
+- Shannon entropy timer formula
+- Complete Phase 1 implementation
 
-### OAuth Token Management
-- Token stored in `.twitch_token` (gitignored, don't commit)
-- Scopes needed: `chat:read`, `chat:edit`, `user:read:chat`, `user:write:chat`, `user:bot`, `channel:bot`
-- Bot username must match token owner
-- OAuth flow opens browser on first run (one-time authorization)
-- Token refresh automatic (expires every 4 hours, refreshes transparently)
+**Session 5:**
+- CSS design system (600+ lines → DRY tokens)
+- Admin panel refactor (cooldowns removed)
+- Window auto-discovery
+- Elapsed-time timer (prevent indefinite delay)
 
-### EventSub Connection
-- Bot requires Flask running first (enforced in startup sequence)
-- EventSub WebSocket can disconnect (reconnect logic needed for Phase 2)
-- Messages received reliably in testing (0 missed votes over 30 min test)
+**Key Learnings:**
+- Start with simplest working solution
+- Refactor when duplication becomes obvious
+- Test manually before abstracting
+- Document decisions when made (CONTEXT.md)
+- Fail-fast > silent fallbacks
 
-### Empty Stream Handling
-- Zero votes ≠ error condition
-- Default to X (extend) and keep going
-- System works autonomously without viewers
+**What Works:**
+- TodoWrite for complex tasks
+- Detailed commit messages with context
+- Parallel tool use for efficiency
+- @includes for documentation (no duplication)
+- Archive handovers each session
 
-### Vote Manager State
-- Currently in-memory only (resets on Flask restart)
-- Persistence to SQLite planned for Phase 2
-- Vote history not tracked (only current cycle)
-
----
-
-## 7. Project History (3 Sessions)
-
-**Session 0 (Documentation):**
-- Created PROJECT_BRIEF, CONTEXT, initial handovers
-- Defined K/L/X mechanics, first-L naming rights system
-- Established philosophy and design principles
-
-**Session 1 (Foundation):**
-- Ported and modularized overlay server from prototype
-- Implemented OAuth authorization code grant flow
-- Discovered IRC deprecation → EventSub required
-- 4 commits, ~1200 lines of working code
-
-**Session 2 (Integration):**
-- Rewrote bot from IRC to EventSub
-- Built action registry (extensible DRY system)
-- Implemented vote manager + first-L claimant logic
-- Connected bot ↔ Flask via SocketIO
-- End-to-end vote flow operational
-- 7 commits, massive progress
-
-**Session 3 (Current):**
-- Documentation consolidation (you are here)
-- Next: Overlay display + vote cycles
+**Avoid:**
+- Premature abstraction
+- Hardcoded fallback values
+- Client-side state (server-authoritative)
+- Cooldowns in admin panel
+- Emojis (unless requested)
 
 ---
 
-## 8. Next Session TODO
+## Next Session Priorities
 
-See [HANDOVER.md](HANDOVER.md) for detailed next steps.
+See current HANDOVER.md for detailed next steps.
 
-**Priority 1: Complete Phase 1 (1-2 hours)**
-- Update `src/overlay.py` HTML to display vote counts
-- Wire `vote_update` SocketIO events to display
-- Test end-to-end: chat → overlay
-
-**Priority 2: Vote Cycle Management (1-2 hours)**
-- Add 60s timer to vote_manager
-- Auto-reset votes after cycle
-- Broadcast timer countdown to overlay
-
-**Priority 3: Manual Vote Resolution (30 mins)**
-- Admin button to "resolve vote now"
-- Display winner in Flask logs
-- Log first-L claimant when L wins
-
-**Priority 4: Testing & Polish (30 mins)**
-- Multi-user testing (alt accounts)
-- Edge cases: ties, all X, empty stream
-- Clean up logging output
+Typically involves:
+1. Polish from previous session's testing
+2. Bug fixes discovered during use
+3. New feature implementation
+4. Documentation updates
 
 ---
 
-## 9. Context Handover Protocol
+## Historical Context
 
-**When you finish a session:**
-1. Update [HANDOVER.md](HANDOVER.md) with current state
-2. Note any gotchas discovered
-3. Clean git history, meaningful commits
-4. Update "Last Updated" timestamp in this file
-5. Archive current HANDOVER.md to `docs/archive/HANDOVER-SESSION-N.md`
+**Previous Sessions:**
+See `docs/archive/HANDOVER-SESSION-*.md` for session-by-session history.
 
-**When you start a session:**
-1. Read this file first (you are here)
-2. Read [HANDOVER.md](HANDOVER.md) for specific next tasks
-3. Skim [PROJECT_BRIEF.md](PROJECT_BRIEF.md) for mechanics
-4. Check recent git log for context
-5. Read [CONTEXT.md](CONTEXT.md) if design decisions unclear
-
-**Historical handovers:** See `docs/archive/` for Sessions 0-2
+**Major Milestones:**
+- Session 0: Documentation & planning
+- Session 1: OAuth flow, foundation
+- Session 2: EventSub bot, vote manager
+- Session 3: End-to-end vote flow
+- Session 4: Server-authoritative, Phase 1 MVP
+- Session 5: Polish, CSS refactor, admin panel, window discovery
 
 ---
 
-## 10. Quick Reference
+> "Process over outcomes. Build systems, not one-offs."
+> "Democracy at any scale. 1 viewer or 1000."
+> "Let them find it. Organic discovery, word of mouth."
 
-**Test the system:**
-```bash
-python -m src.server           # Terminal 1
-python -m src.twitch_bot --test  # Terminal 2
-# Type "k" in Twitch chat → check Flask logs
-```
-
-**Key files to modify for Phase 1:**
-- `src/overlay.py` - Add vote display HTML/CSS/JS
-- `src/vote_manager.py` - Add cycle timer (Phase 2)
-
-**Key files to understand:**
-- `src/actions.py` - How k/l/x are defined
-- `src/vote_manager.py` - Vote tracking + first-L logic
-- `src/twitch_bot.py` - EventSub integration
-- `src/websocket.py` - SocketIO event handlers
-
-**Documentation structure:**
-1. **README.md** - Quick "what is this?" (2 min)
-2. **CLAUDE.md** - Fast context load (5 min) ← you are here
-3. **HANDOVER.md** - Current state + next steps (10 min)
-4. **PROJECT_BRIEF.md** - Full technical spec (30 min)
-5. **CONTEXT.md** - Design philosophy (20 min)
-
----
-
-> CLAUDE.md UPDATED FOR SESSION 3
-> PHASE 1: 5/6 COMPLETE
-> OVERLAY DISPLAY: NEXT
-> DEMOCRACY OPERATIONAL
-
-**Remember:** The hard part (EventSub, OAuth, vote logic) is done. The overlay update is straightforward HTML/CSS/JS. Trust the architecture. Ship it. 🔥
+**DEMOCRACY ONLINE**
+**SELECTION PROTOCOL: OPERATIONAL**

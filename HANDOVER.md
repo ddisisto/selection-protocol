@@ -1,304 +1,217 @@
-# Selection Protocol - Session 4+ Handover
+# Selection Protocol - Session 6 Handover
 
-**Date Started:** 2025-11-22 (Session 4)
-**Status:** Phase 1 Implementation Complete - Testing Needed
-**Last Updated:** 2025-11-22
-
----
-
-## Quick Context
-
-**What we have:**
-- ✅ Complete voting system with dynamic timer (30-120s)
-- ✅ Shannon entropy-based timer formula (mathematically elegant)
-- ✅ Automated vote execution (K→Delete, L→Insert keypresses)
-- ✅ Server-authoritative architecture (zero client-side state)
-- ✅ Clean template structure with static JS files
-- ✅ Vote display working (K/L/X with first-L claimant)
-- ✅ End-to-end vote flow: chat → bot → Flask → vote_manager → game
-
-**What's needed for TRUE MVP:**
-- ❌ Admin panel improvements for testing workflow
-- ❌ Live testing with Twitch bot + actual votes
-- ❌ Verification of timer dynamics and execution
-- ❌ Edge case testing (ties, all X, solo voter, etc.)
-
-**This Session:**
-- Implemented complete Phase 1 voting system
-- Server-authoritative refactor with static JS
-- Entropy-based timer formula
-- Ready for testing (admin panel work needed first)
+**Date:** 2025-11-22
+**Phase:** Phase 1 Complete - Live Testing Phase
+**Status:** System operational, ready for real-world testing
 
 ---
 
-## Session 4 Progress
+## Current State
 
-### Template Refactor (Complete)
-- ✅ Extracted 869-line monolith → Flask templates
-- ✅ Created `src/static/overlay.js` (197 lines - pure render functions)
-- ✅ Created `src/static/admin.js` (126 lines - command handlers)
-- ✅ Templates simplified to 13-15 lines each
-- ✅ Eliminated ~600 lines of duplicate JavaScript
-- ✅ Added routes: `/` (combined), `/admin` (panel only), `/overlay` (OBS source)
+**Phase 1: Complete ✅**
+- Overlay server (Flask + SocketIO)
+- TwitchIO EventSub bot
+- Vote tracking system (k/l/x + first-L claimant)
+- Dynamic timer (30-120s, entropy-based)
+- Admin panel with vote injection
+- Window auto-discovery
+- CSS design system
+- End-to-end vote flow operational
 
-### Server-Authoritative Architecture (Complete)
-- ✅ Removed client-side `setInterval` timer (was 30s local loop)
-- ✅ Removed client-side vote tracking (`lastKVotes` etc)
-- ✅ All state from server via `vote_update` events
-- ✅ Timer displays `data.time_remaining` from server
-- ✅ Overlay is pure render (no local state)
-
-### Vote Display (Complete)
-- ✅ Fixed `i` → `l` naming throughout CSS/JS
-- ✅ Added X vote display (3-column grid)
-- ✅ 3-way pie chart (L blue, X green, K red, clockwise from 12)
-- ✅ Removed individual vote bars (cleaner UI)
-- ✅ Added first-L claimant display under L count
-- ✅ Vote counts update with CSS animation
-
-### Voting Rules Specification (Complete)
-- ✅ Created `docs/VOTING_RULES.md` (locked spec)
-- ✅ Synthesized from CONTEXT.md + IDEAS.md discussions
-- ✅ Dynamic timer: 30-120s based on vote ratios
-- ✅ Winner logic: K or L must have >33% AND beat opponent
-- ✅ Ties and weak majorities = X wins (no action)
-- ✅ Round lifecycle: waiting → first K/L starts timer → voting → execute → reset
-
-### Phase 1 MVP Implementation (Complete - Untested)
-
-**vote_manager.py changes:**
-- ✅ Added timer fields: `base_time`, `timer_limit`, `time_remaining`, `timer_started`
-- ✅ Implemented `get_timer_limit()`: Shannon entropy-based formula
-  - Entropy measures vote uncertainty (0 = unanimous, 1.585 = max split)
-  - Formula: `time = base_time + uncertainty_bonus + x_bonus`
-  - Examples: 100% K = 30s, 50/50 K vs L = 68s, perfect 3-way = 100s
-- ✅ Added `_start_timer()`: Triggers on first K or L vote
-- ✅ Added `_update_timer_limit()`: Recalculates when ratios change
-- ✅ Added `tick()`: Decrements timer every second, checks expiry
-- ✅ Added `_execute_winner()`: Sends keypresses to game
-  - K wins → `send_keypress('Delete')`
-  - L wins → `send_keypress('Insert')` + logs first-L claimant
-  - X wins → No action, logs peaceful round end
-- ✅ Updated `get_winner()`: Implements >33% AND beats opponent logic
-- ✅ Updated `reset_votes()`: Clears timer state for next round
-- ✅ Updated `get_vote_state()`: Includes `time_remaining` in broadcasts
-
-**server.py changes:**
-- ✅ Added `timer_background_task()`: Calls `vote_manager.tick()` every 1s
-- ✅ Starts background task on first client connection
-- ✅ Runs continuously for entire server lifetime
-
-**Round Lifecycle (Implemented):**
-1. Waiting state: No timer, awaiting first K or L vote
-2. First K/L cast: Timer starts at 30s, X becomes available
-3. Voting active: Timer counts down, limit adjusts with ratios
-4. Timer expires: Determine winner, execute action
-5. Reset: Clear votes, return to waiting state
-
----
-
-## What Works (Theory)
-
-**Timer System:**
-- First K/L vote starts timer at 30s
-- X vote unlocks after first K/L
-- Timer limit recalculates continuously as ratios change
-- Entropy formula handles all edge cases smoothly
-- 10K + 1L correctly gives ~33s (not 60s like old logic)
-- Timer broadcasts every second to overlay
-
-**Vote Resolution:**
-- K wins IF: K > 33% AND K > L
-- L wins IF: L > 33% AND L > K
-- X wins: Neither K nor L > 33%, OR K = L (tie)
-- Automated execution sends keypresses to The Bibites
-
-**Architecture:**
-- Server-authoritative (no client timers/counters)
-- Background task runs timer tick every second
-- SocketIO broadcasts state to all clients
-- Overlay displays server state only
-- First-L claimant tracked and displayed
-
----
-
-## What Needs Testing
-
-**Priority 1: Admin Panel Improvements**
-Before live testing, need better admin controls for testing workflow:
-- Manual timer controls (start/stop/reset round)
-- Current round state visibility (who has voted, current ratios)
-- Timer limit display (show current limit, watch it adjust)
-- Vote injection for testing (simulate votes without Twitch)
-- Clear winner preview (see who would win right now)
-
-**Priority 2: Live Testing Workflow**
-Once admin panel improved:
-1. Start server + bot
-2. Cast votes in Twitch chat (k/l/x)
-3. Watch timer start and adjust
-4. Verify winner determination
-5. Confirm keypresses sent to game
-6. Test edge cases:
-   - Solo voter (should win after 30s)
-   - Perfect tie (should result in X/no action)
-   - All X votes (should result in no action)
-   - Ratio changes (timer should jump)
-   - Multiple rounds (reset works correctly)
-
-**Priority 3: Edge Cases & Polish**
-- Timer display color (green → yellow → red)
-- Vote animations working correctly
-- First-L claim transfers when user switches
-- Round resets cleanly
-- No memory leaks from background task
-
----
-
-## Known Issues / Technical Debt
-
-**Not Yet Tested:**
-- Entire voting system is untested with real votes
-- Timer dynamics not verified in practice
-- Entropy formula not validated with real ratios
-- Execution not confirmed (keypress delivery to game)
-- Round reset behavior unknown
-
-**Admin Panel Limitations:**
-- Can't manually start/stop rounds for testing
-- Can't see current vote state clearly
-- Can't inject test votes easily
-- Timer limit not displayed (only time_remaining)
-- No winner preview/debugging
-
-**Future Work (Phase 2+):**
-- Lineage tagging (keypresses + mouse clicks for L wins)
-- Vote history persistence (SQLite)
-- Chat commands (!lineage, !stats)
-- Leaderboards (descendants per username)
-- Vote expiration (X votes lasting 30s)
-- Anti-spam mechanics
-
----
-
-## For Next Session
-
-**Priority 1: Admin Panel for Testing**
-Improve admin panel to enable testing workflow:
-1. Add round state display (current votes, ratios, timer limit)
-2. Add manual round controls (start/stop/reset)
-3. Add test vote injection (buttons to cast k/l/x as fake users)
-4. Add winner preview (show who would win right now)
-5. Add timer limit display (current limit, watch it adjust)
-
-**Priority 2: Live Testing**
-Once admin panel improved:
-1. Start server and Twitch bot
-2. Cast real votes in chat
-3. Verify timer starts and adjusts correctly
-4. Confirm winner determination logic
-5. Verify keypresses reach The Bibites
-6. Test edge cases and document behavior
-
-**Priority 3: Fix Any Issues**
-Based on testing results:
-1. Fix timer calculation bugs if found
-2. Fix execution issues if keypresses don't work
-3. Polish overlay display
-4. Document actual behavior vs expected
-
-**Estimate:** 2-3 hours to admin panel improvements + testing + fixes
-
----
-
-## Implementation Notes
-
-### Entropy Formula (Key Achievement)
-
-The timer formula uses Shannon entropy to measure vote uncertainty:
-
-```python
-# Convert votes to percentages
-k_pct = k_count / total
-l_pct = l_count / total
-x_pct = x_count / total
-
-# Calculate entropy (0 = certain, 1.585 = max split)
-entropy = -sum(p * log2(p) for p in [k_pct, l_pct, x_pct] if p > 0)
-uncertainty = entropy / 1.585  # Normalize to 0-1
-
-# Additive components
-uncertainty_bonus = uncertainty * 60  # Split factor (0-60s)
-x_bonus = x_pct * 60                  # Deliberation request (0-60s)
-
-# Final time (capped at 120s)
-total_time = base_time + uncertainty_bonus + x_bonus
-return min(int(total_time), 120)
+**What's Working:**
+```
+Twitch Chat → EventSub Bot → SocketIO → Flask → Vote Manager
+                                                      ↓
+                                         Broadcasts vote_update
+                                                      ↓
+                              Overlay Display + Admin Panel
+                                                      ↓
+                                         game_controller.py → xdotool
+                                                      ↓
+                                         The Bibites (auto-discovered window)
 ```
 
-**Why This Works:**
-- No if/elif chains - pure mathematics
-- Handles all edge cases smoothly
-- 10K + 1L = low entropy = ~33s (correct!)
-- 5K + 5L = high entropy = ~68s (debate)
-- 1K + 1L + 1X = max entropy + X boost = ~100s
-- Continuous adjustment as votes change
+**Architecture Highlights:**
+- **Window Auto-Discovery:** Finds "The Bibites" at startup, fails fast if not found
+- **Elapsed-Time Timer:** Bounded 30-120s, immune to vote-based delay exploits
+- **CSS Design System:** 3-tier structure (base/admin/overlay), DRY tokens
+- **Admin Testing:** Vote injection (+/-), force execution (K/L/X), live state display
+- **First-L Claim Logic:** Tracks first L voter per round, lineage naming rights
 
 ---
 
-## Session 4 Summary
+## Session 6 Priorities
 
-**Completed:**
-- ✅ Template refactor (869-line → modular, DRY)
-- ✅ Server-authoritative architecture (no client state)
-- ✅ Vote display fixes (i→l, add X, 3-way pie, claimant)
-- ✅ Voting rules specification (VOTING_RULES.md)
-- ✅ Complete Phase 1 voting system implementation
-- ✅ Shannon entropy-based timer formula
-- ✅ Automated vote execution (keypresses to game)
-- ✅ Background timer task (ticks every second)
+### Priority 1: Documentation Review & Alignment
+**User Request:** "review PROJECT_BRIEF and README"
 
-**Not Started:**
-- ❌ Admin panel improvements for testing
-- ❌ Live testing with real votes
-- ❌ Bug fixes based on testing results
+Tasks:
+1. Review [README.md](README.md) - align with current Phase 1 complete state
+2. Review [PROJECT_BRIEF.md](PROJECT_BRIEF.md) - update mechanics, remove outdated info
+3. Consolidate/update any other docs as needed
 
-**Key Achievement:**
-Complete Phase 1 voting system with mathematically elegant timer formula. Ready for testing once admin panel improved.
+### Priority 2: Live Testing Preparation
+With Phase 1 complete, system is ready for real Twitch testing:
+1. End-to-end test with actual Twitch chat
+2. Multi-user voting scenarios
+3. Edge cases: ties, empty stream, rapid vote changes
+4. Performance under load
 
-**Ready for Session 5:**
-Focus on admin panel improvements to enable testing workflow, then comprehensive live testing to verify the voting system works as designed.
-
----
-
-## Quick Reference
-
-**Historical Handovers:**
-- `docs/archive/HANDOVER-SESSION-0.md` - Pre-Session 1
-- `docs/archive/HANDOVER-SESSION-1.md` - Session 1→2
-- `docs/archive/HANDOVER-SESSION-2.md` - Session 2→3
-- `docs/archive/HANDOVER-SESSION-3.md` - Session 3→4
-
-**Documentation Structure:**
-- [README.md](README.md) - Project overview
-- [CLAUDE.md](CLAUDE.md) - Fast context load for AI assistants
-- This file - Current session notes
-- [PROJECT_BRIEF.md](PROJECT_BRIEF.md) - Full technical spec
-- [CONTEXT.md](CONTEXT.md) - Design philosophy
-- [docs/VOTING_RULES.md](docs/VOTING_RULES.md) - Locked voting rules spec
-
-**Key Files:**
-- `src/vote_manager.py` - Complete voting system (timer, execution, logic)
-- `src/server.py` - Flask app + background timer task
-- `src/static/overlay.js` - Server-driven overlay rendering
-- `src/static/admin.js` - Admin panel command handlers
-- `src/templates/` - Clean Flask templates (15 lines each)
+### Priority 3: Polish & Quality
+Based on testing feedback:
+1. UI/UX improvements
+2. Error handling edge cases
+3. Logging clarity
+4. Performance optimization
 
 ---
 
-> SESSION 4 COMPLETE
-> PHASE 1 IMPLEMENTED
-> TESTING NEEDED
-> ADMIN PANEL NEXT
+## System Overview
 
-🔥
+### Core Components
+
+**Server Side:**
+- `src/server.py` - Flask app, main entry point
+- `src/websocket.py` - SocketIO event handlers
+- `src/vote_manager.py` - Vote tracking, timer, first-L logic
+- `src/game_controller.py` - xdotool automation, window discovery
+- `src/twitch_bot.py` - EventSub integration
+- `src/oauth_flow.py` - Token management
+- `src/actions.py` - Action registry
+- `src/cooldowns.py` - Cooldown system (not used in admin panel)
+- `src/config.py` - Configuration
+
+**Client Side:**
+- `src/templates/base.html` - Layout
+- `src/templates/overlay.html` - Vote display overlay
+- `src/templates/admin_panel.html` - Admin controls (left sidebar)
+- `src/static/base.css` - Design tokens, utilities, shared components
+- `src/static/overlay.css` - Overlay-specific styles
+- `src/static/admin.css` - Admin panel styles
+- `src/static/overlay.js` - Overlay display logic
+- `src/static/admin.js` - Admin panel interactions
+
+### Running the System
+
+**Terminal 1: Overlay Server**
+```bash
+source .venv/bin/activate
+python -m src.server
+# → http://localhost:5000
+# Auto-discovers game window at startup
+```
+
+**Terminal 2: Twitch Bot**
+```bash
+source .venv/bin/activate
+python -m src.twitch_bot --test  # 30s test mode
+python -m src.twitch_bot          # daemon mode
+```
+
+**Browser:**
+- Overlay: http://localhost:5000/overlay
+- Admin Panel: http://localhost:5000 (left sidebar)
+
+### Key Mechanics
+
+**Vote System:**
+- One person, one vote (latest replaces previous)
+- k = Kill (Delete key), l = Lay egg (Insert key), x = Extend (do nothing)
+- First L voter gets naming claim, loses if they switch away
+
+**Timer System:**
+- Base: 30s minimum
+- Extended by vote entropy (Shannon entropy formula)
+- Maximum: 120s total round duration
+- Elapsed-time based (immune to delay exploits)
+- Formula: `30 + (entropy × 90)`
+
+**Admin Panel:**
+- **Vote Injection:** +/- buttons add/remove test votes with random usernames
+- **Force Execution:** K/L/X buttons execute immediately (bypass timer)
+- **Camera Controls:** Direct keypress (no cooldowns)
+- **Live State:** Real-time vote counts, timer, first-L claimant
+
+**Window Targeting:**
+- Auto-discovers "The Bibites" window at server startup
+- Fails fast if not found or multiple windows
+- xdotool delivers keypresses via window ID
+
+---
+
+## Recent Changes (Session 5)
+
+**Major Achievements:**
+1. **CSS Design System** - Extracted 600+ lines inline CSS → DRY token system
+2. **Admin Panel Refactor** - Testing-focused 3x3 grid interface
+3. **Window Auto-Discovery** - Fail-fast validation, no hardcoded IDs
+4. **Timer System Fixes** - Extension bug, "VOTE NOW!" display, elapsed-time system
+
+**Commits:**
+- CSS refactor (design system)
+- Admin panel refactor (vote injection)
+- Window auto-discovery
+- Cooldown removal from admin panel
+- Timer extension fix + "VOTE NOW!" display
+- Elapsed-time timer system
+
+---
+
+## Known Gotchas
+
+**Window Discovery:**
+- Game must be running before starting server
+- Server will exit with clear error if window not found
+- Window ID can change on game restart (auto-discovery handles this)
+
+**First-L Claim Logic:**
+- User votes L → gets claim
+- User switches to K/X → loses claim to next L voter
+- Multiple L voters → only first by timestamp has claim
+- Test with multiple accounts before trusting
+
+**Timer System:**
+- Bounded 30-120s total (immune to delay exploits)
+- Empty stream defaults to 30s (no votes = minimum timer)
+- Displays "VOTE NOW!" when timer inactive (white, 36px)
+- Countdown shown in accent color (green/yellow/red), 54px
+
+**OAuth Tokens:**
+- Cached in `.twitch_token` (gitignored)
+- Auto-refreshes every 4 hours
+- Bot must be authorized by channel owner
+- Scopes: `chat:read`, `chat:edit`, `user:read:chat`, `user:write:chat`, `user:bot`, `channel:bot`
+
+**Admin Panel:**
+- No cooldowns (immediate execution)
+- Vote injection creates test_XXXXXX usernames
+- Force execution bypasses timer entirely
+- Camera controls are direct keypresses
+
+---
+
+## Documentation Structure
+
+For complete context, see:
+- **[CLAUDE.md](CLAUDE.md)** - Workflows, patterns, methodologies (START HERE)
+- **[README.md](README.md)** - Project overview & quick start
+- **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)** - Full technical spec
+- **[CONTEXT.md](CONTEXT.md)** - Design philosophy
+- **[VOTING_RULES.md](VOTING_RULES.md)** - Vote mechanics reference
+- **[docs/archive/](docs/archive/)** - Historical handovers (Sessions 0-5)
+
+---
+
+## Next Session Start Checklist
+
+1. Read [CLAUDE.md](CLAUDE.md) for workflows and patterns
+2. Read this HANDOVER.md for current state
+3. Check recent git log for context
+4. Review Priority 1 tasks (documentation alignment)
+5. Run system locally to verify operational state
+
+---
+
+> **Phase 1 Complete** - System operational, democracy functional
+> **Next:** Documentation alignment, live testing, polish
+> **Status:** Ready for real-world Twitch deployment
