@@ -118,7 +118,7 @@ Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager → 
 ## Credits
 
 Concept and implementation: Daniel + Claude (Sonnet 4.5)
-Game: [The Bibites](https://thebibites.com) by Leore Avidar
+Game: [The Bibites](https://thebibites.com) by Leo Caussan
 
 ---
 
