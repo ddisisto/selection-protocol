@@ -49,11 +49,12 @@ class VoteManager:
         self.cycle_active = False
         self.cycle_start_time = None
 
-        # Timer system (dynamic, ratio-based)
-        self.base_time = 30          # Minimum timer duration
-        self.timer_limit = None      # Target time in seconds (30-120s)
-        self.time_remaining = None   # Current countdown value
-        self.timer_started = False   # Whether timer is running
+        # Timer system (elapsed-time-based, dynamic target)
+        self.base_time = 30            # Minimum timer duration
+        self.timer_limit = None        # Target duration in seconds (30-120s)
+        self.time_remaining = None     # Calculated: target - elapsed
+        self.timer_started = False     # Whether timer is running
+        self.round_start_time = None   # When current round started (wall clock)
 
     def cast_vote(self, username, vote, timestamp=None):
         """
@@ -168,20 +169,21 @@ class VoteManager:
         Start the vote timer.
 
         Called when first K or L vote is cast.
-        Initializes timer at 30s (1:0:0 ratio).
+        Records wall clock start time and calculates initial target duration.
         """
+        self.round_start_time = datetime.now()
         counts = self.get_vote_counts()
         self.timer_limit = self.get_timer_limit(counts['k'], counts['l'], counts['x'])
         self.time_remaining = self.timer_limit
         self.timer_started = True
-        self.log_action("Timer started", f"{self.timer_limit}s")
+        self.log_action("Timer started", f"{self.timer_limit}s target")
 
     def _update_timer_limit(self):
         """
-        Recalculate timer limit based on current vote ratios.
+        Recalculate target duration based on current vote ratios.
 
         Called whenever a vote changes.
-        Adjusts time_remaining to match new limit.
+        Updates timer_limit (target), but time_remaining recalculates from elapsed time.
         """
         counts = self.get_vote_counts()
         new_limit = self.get_timer_limit(counts['k'], counts['l'], counts['x'])
@@ -190,14 +192,14 @@ class VoteManager:
             old_limit = self.timer_limit
             self.timer_limit = new_limit
 
-            # Set remaining time to new limit
-            # Timer extends/contracts based on vote uncertainty
-            if self.time_remaining is not None:
-                self.time_remaining = new_limit
+            # Calculate current elapsed time
+            if self.round_start_time is not None:
+                elapsed = (datetime.now() - self.round_start_time).total_seconds()
+                new_remaining = max(0, int(new_limit - elapsed))
 
                 self.log_action(
-                    "Timer adjusted",
-                    f"{old_limit}s → {new_limit}s (remaining: {self.time_remaining}s)"
+                    "Target adjusted",
+                    f"{old_limit}s → {new_limit}s (elapsed: {int(elapsed)}s, remaining: {new_remaining}s)"
                 )
 
     def get_timer_limit(self, k_count, l_count, x_count):
@@ -280,20 +282,22 @@ class VoteManager:
         """
         Timer tick - called every second by background task.
 
-        Decrements time_remaining and checks for expiry.
-        When timer hits 0, executes winner and resets round.
+        Calculates time_remaining from elapsed time and target duration.
+        When elapsed >= target, executes winner and resets round.
         """
-        if not self.timer_started or self.time_remaining is None:
+        if not self.timer_started or self.round_start_time is None:
             return
 
-        self.time_remaining -= 1
+        # Calculate elapsed time since round start
+        elapsed = (datetime.now() - self.round_start_time).total_seconds()
+        self.time_remaining = max(0, int(self.timer_limit - elapsed))
 
         # Broadcast updated timer
         self._broadcast_state()
 
-        # Check for expiry
-        if self.time_remaining <= 0:
-            self.log_action("Timer expired", "Resolving vote")
+        # Check for expiry (elapsed time >= target duration)
+        if elapsed >= self.timer_limit:
+            self.log_action("Timer expired", f"Target {self.timer_limit}s reached")
             self._execute_winner()
 
     def _execute_winner(self):
@@ -343,6 +347,7 @@ class VoteManager:
         self.timer_limit = None
         self.time_remaining = None
         self.timer_started = False
+        self.round_start_time = None
 
         self.log_action("Votes reset", "Awaiting next round")
         self._broadcast_state()
