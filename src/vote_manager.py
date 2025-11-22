@@ -6,6 +6,7 @@ and broadcasts state updates to overlay via SocketIO.
 """
 
 from datetime import datetime
+from math import log2
 from .actions import ACTIONS, is_valid_action
 from .game_controller import send_keypress
 
@@ -49,6 +50,7 @@ class VoteManager:
         self.cycle_start_time = None
 
         # Timer system (dynamic, ratio-based)
+        self.base_time = 30          # Minimum timer duration
         self.timer_limit = None      # Target time in seconds (30-120s)
         self.time_remaining = None   # Current countdown value
         self.timer_started = False   # Whether timer is running
@@ -202,13 +204,19 @@ class VoteManager:
 
     def get_timer_limit(self, k_count, l_count, x_count):
         """
-        Calculate timer limit based on vote ratios.
+        Calculate timer limit based purely on vote distribution.
 
-        Maps vote diversity and X dominance to 30-120s scale:
-        - Unanimous (1:0:0) → 30s  (quick decision)
-        - Split 2-way (1:1:0) → 60s  (debate)
-        - 3-way split (1:1:1) → 90s  (complex)
-        - X dominant (1:2+:1) → 120s  (extended deliberation)
+        Uses Shannon entropy to measure vote uncertainty/split:
+        - Unanimous (100% one option) → 30s (certain, quick)
+        - 50/50 split → ~68s (uncertain, debate)
+        - Perfect 3-way split → ~100s (maximum complexity)
+        - X dominant → extends further (deliberation request)
+
+        Formula:
+            time = base_time + uncertainty_bonus + x_bonus
+            - uncertainty_bonus: 0-60s based on entropy (how split)
+            - x_bonus: 0-60s based on X percentage (deliberation)
+            - Capped at 120s maximum
 
         Args:
             k_count: Number of K votes
@@ -221,33 +229,32 @@ class VoteManager:
         total = k_count + l_count + x_count
 
         if total == 0:
-            return 30  # Default for empty state
+            return self.base_time
 
-        # Count how many vote types are present (diversity)
-        types_present = sum([k_count > 0, l_count > 0, x_count > 0])
+        # Convert to percentages
+        k_pct = k_count / total
+        l_pct = l_count / total
+        x_pct = x_count / total
 
-        # Calculate X percentage
-        x_percent = (x_count / total) * 100 if total > 0 else 0
+        # Calculate Shannon entropy (measures uncertainty)
+        # Entropy = -Σ(p_i * log2(p_i)) for each vote type
+        # Range: 0 (unanimous) to log2(3)≈1.585 (perfect 3-way split)
+        entropy = 0
+        for pct in [k_pct, l_pct, x_pct]:
+            if pct > 0:
+                entropy -= pct * log2(pct)
 
-        # Base time on diversity
-        if types_present == 1:
-            # Unanimous - quick decision
-            base_time = 30
-        elif types_present == 2:
-            # 2-way split - moderate debate
-            base_time = 60
-        else:  # types_present == 3
-            # 3-way split - complex deliberation
-            base_time = 90
+        # Normalize entropy to 0-1 scale
+        max_possible_entropy = 1.585  # log2(3) for 3 options
+        uncertainty = min(entropy / max_possible_entropy, 1.0)
 
-        # Extend time if X is dominant (>= 40%)
-        if x_percent >= 40:
-            # Scale from base_time to 120s based on X dominance
-            # 40% X = base_time, 60%+ X = 120s
-            x_boost = min((x_percent - 40) / 20, 1.0)  # 0.0 to 1.0
-            base_time = base_time + (120 - base_time) * x_boost
+        # Additive components
+        uncertainty_bonus = uncertainty * 60  # How split votes are (0-60s)
+        x_bonus = x_pct * 60                  # Deliberation request (0-60s)
 
-        return int(base_time)
+        # Combine and cap
+        total_time = self.base_time + uncertainty_bonus + x_bonus
+        return min(int(total_time), 120)
 
     def get_vote_state(self):
         """
