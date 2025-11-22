@@ -41,6 +41,17 @@
 }
 
 /* ============================================================
+   ADMIN ACTION ROWS (3x3 grid for vote injection)
+   ============================================================ */
+
+.admin-action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+/* ============================================================
    ADMIN VOTE DISPLAY
    ============================================================ */
 
@@ -49,7 +60,7 @@
     align-items: center;
     justify-content: space-between;
     background: var(--color-bg-tertiary);
-    padding: var(--space-3);
+    padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-sm);
     margin-bottom: var(--space-2);
 }
@@ -57,10 +68,11 @@
 .admin-vote-display__label {
     font-weight: var(--font-weight-bold);
     color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
 }
 
 .admin-vote-display__count {
-    font-size: var(--font-size-xl);
+    font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
 }
 
@@ -76,26 +88,32 @@
     color: var(--color-extend);
 }
 
+.admin-vote-display__value {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-primary);
+    font-style: italic;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ============================================================
    ADMIN CONTROLS
    ============================================================ */
 
-.admin-vote-controls {
+.admin-camera-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-}
-
-.admin-timer-controls {
-    display: flex;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: var(--space-2);
     margin-bottom: var(--space-2);
 }
 
-.admin-timer-controls .btn {
-    margin-bottom: 0;
-    flex: 1;
+.admin-zoom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+    margin-bottom: var(--space-2);
 }
 
 /* ============================================================

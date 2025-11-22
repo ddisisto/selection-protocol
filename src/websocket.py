@@ -13,15 +13,16 @@ from .cooldowns import start_cooldown, check_cooldown, get_cooldown_state_dict
 from .game_controller import send_keypress
 
 
-def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
+def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager=None):
     """
     Register all SocketIO event handlers.
 
     Args:
         socketio: Flask-SocketIO instance
-        vote_state: Global vote state dictionary
+        vote_state: Global vote state dictionary (deprecated)
         admin_state: Global admin state dictionary
         log_action: Logging function for admin actions
+        vote_manager: VoteManager instance (new, replaces vote_state)
     """
 
     def broadcast_states():
@@ -204,5 +205,39 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action):
     def handle_get_cooldown_state():
         """Handle request for current cooldown state."""
         emit('cooldown_update', get_cooldown_state_dict())
+
+    # ============================================================
+    # NEW ADMIN TESTING HANDLERS (vote_manager-based)
+    # ============================================================
+
+    @socketio.on('admin_add_vote')
+    def handle_admin_add_vote(data):
+        """Handle admin test vote addition (+)."""
+        if not vote_manager:
+            return
+        vote_type = data.get('vote_type', '').lower()
+        if vote_type in ['k', 'l', 'x']:
+            test_username = vote_manager.add_test_vote(vote_type)
+            log_action(f"Test vote added: {vote_type.upper()}", test_username)
+
+    @socketio.on('admin_remove_vote')
+    def handle_admin_remove_vote(data):
+        """Handle admin vote removal (-)."""
+        if not vote_manager:
+            return
+        vote_type = data.get('vote_type', '').lower()
+        if vote_type in ['k', 'l', 'x']:
+            success = vote_manager.remove_last_vote(vote_type)
+            if not success:
+                log_action(f"Remove {vote_type.upper()} vote", "No votes to remove")
+
+    @socketio.on('admin_force_execute')
+    def handle_admin_force_execute(data):
+        """Handle admin force execution (K/L/X caps buttons)."""
+        if not vote_manager:
+            return
+        action = data.get('action', '').lower()
+        if action in ['k', 'l', 'x']:
+            vote_manager.force_execute_action(action)
 
     return broadcast_states

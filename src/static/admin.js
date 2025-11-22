@@ -5,6 +5,19 @@
  * No local state - server is authoritative.
  */
 
+// Vote Testing Functions
+function adminAddVote(voteType) {
+    socket.emit('admin_add_vote', {vote_type: voteType});
+}
+
+function adminRemoveVote(voteType) {
+    socket.emit('admin_remove_vote', {vote_type: voteType});
+}
+
+function adminForceExecute(action) {
+    socket.emit('admin_force_execute', {action: action});
+}
+
 // Timer Controls
 function adminPauseTimer() {
     socket.emit('admin_pause_timer');
@@ -121,6 +134,28 @@ socket.on('keypress_result', function(data) {
         console.log(`Keypress ${data.key} succeeded`);
     } else {
         console.error('Keypress failed:', data.error);
+    }
+});
+
+// Vote update handler (from vote_manager)
+socket.on('vote_update', function(data) {
+    console.log('Vote update:', data);
+
+    // Update admin panel vote counts
+    const kCountEl = document.getElementById('admin-k-count');
+    const lCountEl = document.getElementById('admin-l-count');
+    const xCountEl = document.getElementById('admin-x-count');
+    const timerEl = document.getElementById('admin-timer');
+    const firstLEl = document.getElementById('admin-first-l');
+
+    if (kCountEl) kCountEl.textContent = data.k_votes;
+    if (lCountEl) lCountEl.textContent = data.l_votes;
+    if (xCountEl) xCountEl.textContent = data.x_votes;
+    if (timerEl && data.time_remaining !== null) {
+        timerEl.textContent = data.time_remaining + 's';
+    }
+    if (firstLEl) {
+        firstLEl.textContent = data.first_l_claimant || '—';
     }
 });
 

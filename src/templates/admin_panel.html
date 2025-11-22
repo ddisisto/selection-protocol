@@ -1,63 +1,78 @@
-<!-- Admin Panel - Left Side -->
+<!-- Admin Panel - Testing & Control Interface -->
 <div class="admin-panel">
-    <!-- Game Actions -->
+    <!-- Vote Injection & Execution -->
     <div class="admin-section">
-        <div class="admin-section__title">Game Actions (15s shared)</div>
-        <button class="btn btn--kill btn--full admin-btn" id="btn-kill" onclick="sendKeypress('Delete', 'primary')">
-            [Delete] KILL
-            <span class="admin-btn__cooldown" id="cd-kill" style="display: none;"></span>
-        </button>
-        <button class="btn btn--lay btn--full admin-btn" id="btn-lay" onclick="sendKeypress('Insert', 'primary')">
-            [Ins] LAY
-            <span class="admin-btn__cooldown" id="cd-lay" style="display: none;"></span>
-        </button>
-        <button class="btn btn--extend btn--full admin-btn" id="btn-extend" onclick="sendKeypress('x', 'extend')">
-            [x] EXTEND (30s)
-            <span class="admin-btn__cooldown" id="cd-extend" style="display: none;"></span>
-        </button>
-        <div class="status-line">
-            <span class="status-line__label">Cooldown:</span>
-            <span class="status-line__value" id="primary-cooldown">Ready</span>
+        <div class="admin-section__title">Game Actions</div>
+
+        <!-- L row: Lay -->
+        <div class="admin-action-row">
+            <button class="btn btn--small btn--lay" onclick="adminAddVote('l')">l+</button>
+            <button class="btn btn--small btn--lay" onclick="adminRemoveVote('l')">l-</button>
+            <button class="btn btn--lay" onclick="adminForceExecute('l')">L</button>
+        </div>
+
+        <!-- K row: Kill -->
+        <div class="admin-action-row">
+            <button class="btn btn--small btn--kill" onclick="adminAddVote('k')">k+</button>
+            <button class="btn btn--small btn--kill" onclick="adminRemoveVote('k')">k-</button>
+            <button class="btn btn--kill" onclick="adminForceExecute('k')">K</button>
+        </div>
+
+        <!-- X row: Extend -->
+        <div class="admin-action-row">
+            <button class="btn btn--small btn--extend" onclick="adminAddVote('x')">x+</button>
+            <button class="btn btn--small btn--extend" onclick="adminRemoveVote('x')">x-</button>
+            <button class="btn btn--extend" onclick="adminForceExecute('x')">X</button>
         </div>
     </div>
 
-    <!-- Camera Controls -->
+    <!-- Vote State Display -->
     <div class="admin-section">
-        <div class="admin-section__title">Camera (10s shared)</div>
-        <button class="btn btn--camera btn--full admin-btn" id="btn-cam-gen" onclick="sendKeypress('ctrl+g', 'camera')">[Ctrl+G] Generation</button>
-        <button class="btn btn--camera btn--full admin-btn" id="btn-cam-old" onclick="sendKeypress('ctrl+o', 'camera')">[Ctrl+O] Oldest</button>
-        <button class="btn btn--camera btn--full admin-btn" id="btn-cam-rand" onclick="sendKeypress('ctrl+r', 'camera')">[Ctrl+R] Random</button>
+        <div class="admin-section__title">Current Round</div>
+        <div class="admin-vote-display">
+            <span class="admin-vote-display__label">L:</span>
+            <span class="admin-vote-display__count admin-vote-display__count--l" id="admin-l-count">0</span>
+        </div>
+        <div class="admin-vote-display">
+            <span class="admin-vote-display__label">K:</span>
+            <span class="admin-vote-display__count admin-vote-display__count--k" id="admin-k-count">0</span>
+        </div>
+        <div class="admin-vote-display">
+            <span class="admin-vote-display__label">X:</span>
+            <span class="admin-vote-display__count admin-vote-display__count--x" id="admin-x-count">0</span>
+        </div>
+        <div class="admin-vote-display">
+            <span class="admin-vote-display__label">Timer:</span>
+            <span class="admin-vote-display__count" id="admin-timer">30s</span>
+        </div>
+        <div class="admin-vote-display">
+            <span class="admin-vote-display__label">First L:</span>
+            <span class="admin-vote-display__value" id="admin-first-l">—</span>
+        </div>
+    </div>
+
+    <!-- Camera & Zoom -->
+    <div class="admin-section">
+        <div class="admin-section__title">Camera & Zoom</div>
+
+        <!-- Camera modes -->
+        <div class="admin-camera-row">
+            <button class="btn btn--small btn--camera" onclick="sendKeypress('ctrl+g', 'camera')">Gen</button>
+            <button class="btn btn--small btn--camera" onclick="sendKeypress('ctrl+o', 'camera')">Old</button>
+            <button class="btn btn--small btn--camera" onclick="sendKeypress('ctrl+r', 'camera')">Rand</button>
+        </div>
+
+        <!-- Camera mode status -->
         <div class="status-line">
             <span class="status-line__label">Mode:</span>
             <span class="status-line__value" id="camera-mode">Unknown</span>
         </div>
-    </div>
 
-    <!-- Zoom Controls -->
-    <div class="admin-section">
-        <div class="admin-section__title">Zoom (5s individual)</div>
-        <button class="btn btn--camera btn--full admin-btn" id="btn-zoom-in" onclick="sendKeypress('KP_Add', 'zoom_in')">
-            [KP+] Zoom In
-            <span class="admin-btn__cooldown" id="cd-zoom-in" style="display: none;"></span>
-        </button>
-        <button class="btn btn--camera btn--full admin-btn" id="btn-zoom-out" onclick="sendKeypress('KP_Subtract', 'zoom_out')">
-            [KP-] Zoom Out
-            <span class="admin-btn__cooldown" id="cd-zoom-out" style="display: none;"></span>
-        </button>
-    </div>
-
-    <!-- Timer Controls -->
-    <div class="admin-section">
-        <div class="admin-section__title">Timer (demo/testing)</div>
-        <div class="admin-vote-display">
-            <span class="admin-vote-display__label">Time:</span>
-            <span class="admin-vote-display__count" id="admin-timer">30s</span>
+        <!-- Zoom controls -->
+        <div class="admin-zoom-row">
+            <button class="btn btn--small btn--camera" onclick="sendKeypress('KP_Add', 'zoom_in')">+</button>
+            <button class="btn btn--small btn--camera" onclick="sendKeypress('KP_Subtract', 'zoom_out')">-</button>
         </div>
-        <div class="admin-timer-controls">
-            <button class="btn btn--small" onclick="adminPauseTimer()">Pause</button>
-            <button class="btn btn--small" onclick="adminResumeTimer()">Resume</button>
-        </div>
-        <button class="btn btn--full admin-btn" onclick="adminResetTimer()">Reset</button>
     </div>
 
     <!-- System Status -->

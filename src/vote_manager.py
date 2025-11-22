@@ -413,3 +413,94 @@ class VoteManager:
         """Broadcast current vote state to all connected clients."""
         state = self.get_vote_state()
         self.socketio.emit('vote_update', state)
+
+    # ============================================================
+    # ADMIN TESTING METHODS
+    # ============================================================
+
+    def add_test_vote(self, vote_type):
+        """
+        Add a test vote with a random username (admin panel testing).
+
+        Args:
+            vote_type: Vote code ('k', 'l', or 'x')
+
+        Returns:
+            str: Generated test username
+        """
+        import random
+        test_username = f"test_{random.randint(100000, 999999)}"
+        self.cast_vote(test_username, vote_type)
+        return test_username
+
+    def remove_last_vote(self, vote_type):
+        """
+        Remove the most recent vote of a specific type (admin panel testing).
+
+        Args:
+            vote_type: Vote code ('k', 'l', or 'x')
+
+        Returns:
+            bool: True if a vote was removed, False if no votes of that type
+        """
+        # Find all voters of this type
+        voters_of_type = [
+            (username, data['timestamp'])
+            for username, data in self.votes.items()
+            if data['vote'] == vote_type
+        ]
+
+        if not voters_of_type:
+            self.log_action(f"Remove {vote_type.upper()} vote", "No votes to remove")
+            return False
+
+        # Find most recent voter
+        most_recent_voter, _ = max(voters_of_type, key=lambda x: x[1])
+
+        # Remove the vote
+        del self.votes[most_recent_voter]
+        self.log_action(f"Removed {vote_type.upper()} vote", most_recent_voter)
+
+        # If it was an L vote, recalculate first-L claimant
+        if vote_type == 'l' and most_recent_voter == self.first_l_claimant:
+            self._find_new_first_l_claimant()
+
+        # Recalculate timer limit
+        if self.timer_started:
+            self._update_timer_limit()
+
+        # Broadcast updated state
+        self._broadcast_state()
+
+        return True
+
+    def force_execute_action(self, action):
+        """
+        Force immediate execution of a specific action (admin panel testing).
+
+        Bypasses normal vote resolution and timer.
+        Executes the specified action immediately and resets for next round.
+
+        Args:
+            action: Action code ('k', 'l', or 'x')
+        """
+        self.log_action(f"FORCE EXECUTE: {action.upper()}", "Admin override")
+
+        if action == 'k':
+            result = send_keypress('Delete', self.log_action)
+            if result['success']:
+                print("✓ FORCE EXECUTED: Delete keypress (admin K)")
+            else:
+                print(f"✗ FAILED: Delete keypress - {result.get('error', 'Unknown error')}")
+        elif action == 'l':
+            claimant = self.first_l_claimant or "Unknown"
+            result = send_keypress('Insert', self.log_action)
+            if result['success']:
+                print(f"✓ FORCE EXECUTED: Insert keypress (admin L, claimant: {claimant})")
+            else:
+                print(f"✗ FAILED: Insert keypress - {result.get('error', 'Unknown error')}")
+        else:  # action == 'x'
+            print("→ FORCE EXECUTED: No action (admin X)")
+
+        # Reset for next round
+        self.reset_votes()
