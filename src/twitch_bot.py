@@ -101,7 +101,6 @@ class SelectionBot(commands.AutoBot):
         self.start_time = datetime.now()
         self.votes_received = 0
         self.messages_received = 0
-        self.startup_message_verified = False
         # Store for chat message sending and filtering
         self._client_id = client_id
         self._access_token = access_token
@@ -161,17 +160,24 @@ class SelectionBot(commands.AutoBot):
             print("=" * 60)
             sys.exit(1)
 
-    async def _send_chat_message(self, message):
+    async def _send_chat_message(self, message, color='blue'):
         """
-        Send a message to Twitch chat.
+        Send a message to Twitch chat with colored announcement.
 
         Args:
             message: Text to send to chat
+            color: Announcement color ('blue', 'green', or 'orange')
+                   - Blue: default/neutral
+                   - Green: L-related (lay, reproduce)
+                   - Orange: K-related (kill)
 
         Returns:
             bool: True if sent successfully, False otherwise
         """
         try:
+            # Prefix message with colored announcement command
+            colored_message = f"/announce{color} {message}"
+
             url = "https://api.twitch.tv/helix/chat/messages"
             headers = {
                 "Client-ID": self._client_id,
@@ -181,7 +187,7 @@ class SelectionBot(commands.AutoBot):
             data = {
                 "broadcaster_id": self.channel_id,
                 "sender_id": self.bot_id,
-                "message": message
+                "message": colored_message
             }
 
             response = requests.post(url, headers=headers, json=data)
@@ -207,8 +213,11 @@ class SelectionBot(commands.AutoBot):
             vote = data.get('vote', '').upper()
             timer = data.get('timer_limit', 30)
 
+            # Color based on initial vote: K=orange, L=green, X=blue
+            color = 'orange' if vote == 'K' else ('green' if vote == 'L' else 'blue')
+
             message = f"Voting opened by @{username}: {vote}, {timer}s to have your say: K,L,X"
-            success = await self._send_chat_message(message)
+            success = await self._send_chat_message(message, color=color)
 
             if success:
                 print(f"✓ Round start announced: {username} voted {vote}")
@@ -223,6 +232,9 @@ class SelectionBot(commands.AutoBot):
             l_votes = data.get('l_votes', 0)
             x_votes = data.get('x_votes', 0)
             claimant = data.get('first_l_claimant')
+
+            # Color based on winner: K=orange, L=green, X=blue
+            color = 'orange' if winner == 'k' else ('green' if winner == 'l' else 'blue')
 
             # Build vote count string (omit zeros)
             vote_parts = []
@@ -243,7 +255,7 @@ class SelectionBot(commands.AutoBot):
             else:  # x wins
                 message = f"X wins (tie/no action) • {vote_str} • Round reset"
 
-            success = await self._send_chat_message(message)
+            success = await self._send_chat_message(message, color=color)
 
             if success:
                 print(f"✓ Round end announced: {winner.upper()} wins")
@@ -297,13 +309,11 @@ class SelectionBot(commands.AutoBot):
         username = payload.chatter.name
         text = payload.text
 
-        self.messages_received += 1
+        # Filter out bot's own messages (prevents announcement loops)
+        if str(payload.chatter.id) == str(self.bot_id):
+            return
 
-        # Check if this is our startup message reflected back
-        if not self.startup_message_verified and "Selection Protocol online" in text:
-            self.startup_message_verified = True
-            print(f"✓ Startup message verified (end-to-end chat confirmed)")
-            return  # Don't log our own startup message
+        self.messages_received += 1
 
         # Log ALL chat messages
         print(f"[{timestamp}] {username}: {text}")
@@ -382,29 +392,15 @@ class SelectionBot(commands.AutoBot):
         sys.exit(1)
 
     async def _send_startup_announcement(self):
-        """
-        Send startup message to chat and verify it's received.
-
-        This confirms end-to-end Twitch communication is working.
-        """
+        """Send startup message to chat (blue announcement)."""
         # Wait a moment for EventSub to be fully ready
         await asyncio.sleep(2)
 
         message = "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 0-4 (info panels, 0=hide)"
-        success = await self._send_chat_message(message)
+        success = await self._send_chat_message(message, color='blue')
 
         if success:
             print("✓ Startup announcement sent to chat")
-
-            # Wait up to 5 seconds for verification
-            for i in range(50):
-                if self.startup_message_verified:
-                    break
-                await asyncio.sleep(0.1)
-
-            if not self.startup_message_verified:
-                print("⚠ Startup message not verified (didn't see reflection in 5s)")
-                print("  Chat sending may work, but EventSub reflection not confirmed")
         else:
             print("⚠ Failed to send startup announcement")
             print("  Bot will continue (receiving still works)")
