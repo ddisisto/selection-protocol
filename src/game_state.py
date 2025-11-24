@@ -153,8 +153,10 @@ class ZoomTracker:
     Creates natural equilibrium at edge of chaos.
 
     Distance range: -50 (zoomed out) to +50 (zoomed in)
-    Cooldown range: 1s (at center) to 120s (at limits)
-    Formula: cooldown = 1 + (|distance| / 50) * 119
+    Cooldown: Separate per direction
+        - Moving toward center: 1s (always)
+        - Moving away from center: 1.0 * 1.1^|distance| (exponential)
+    Formula caps at 120s for practical UX.
     """
 
     def __init__(self, name):
@@ -172,8 +174,8 @@ class ZoomTracker:
         self.max_distance = 50
 
         # Cooldown scaling
-        self.min_cooldown = 1.0   # At center (distance=0)
-        self.max_cooldown = 120.0  # At limits (distance=±50)
+        self.base_cooldown = 1.0    # Moving toward center
+        self.max_cooldown = 120.0   # Cap for exponential growth
 
         # Current state
         self.previous_distance = None
@@ -182,22 +184,43 @@ class ZoomTracker:
         self.last_change = None
         self.last_user = None
         self.last_cause = None
+        self.last_direction = None  # Track last direction for cooldown
 
         # Rejection tracking
         self.rejected_count = 0
         self.last_rejected_user = None
 
-    def get_dynamic_cooldown(self):
+    def get_dynamic_cooldown(self, direction):
         """
-        Calculate cooldown based on current distance from initial.
+        Calculate cooldown based on direction and current distance.
+
+        Args:
+            direction: '+' (zoom in) or '-' (zoom out)
 
         Returns:
             float: Cooldown in seconds (1-120s)
         """
+        # Determine if moving toward or away from center
+        if self.distance_from_initial == 0:
+            # At center, all moves are away
+            moving_away = True
+        elif self.distance_from_initial > 0:
+            # Zoomed in (positive distance)
+            moving_away = (direction == '+')  # + moves further in
+        else:
+            # Zoomed out (negative distance)
+            moving_away = (direction == '-')  # - moves further out
+
+        # Moving toward center = base cooldown (1s)
+        if not moving_away:
+            return self.base_cooldown
+
+        # Moving away = exponential scaling based on current distance
         abs_distance = abs(self.distance_from_initial)
-        normalized = abs_distance / 50.0  # 0.0 to 1.0
-        cooldown_range = self.max_cooldown - self.min_cooldown
-        return self.min_cooldown + (normalized * cooldown_range)
+        cooldown = 1.0 * (1.1 ** abs_distance)
+
+        # Cap at max_cooldown for practical UX
+        return min(cooldown, self.max_cooldown)
 
     def can_execute(self, direction):
         """
@@ -215,27 +238,33 @@ class ZoomTracker:
         if direction == '-' and self.distance_from_initial <= self.min_distance:
             return False, 'limit_reached'
 
-        # Check cooldown
-        if self.last_change:
+        # Check cooldown (based on last direction taken)
+        if self.last_change and self.last_direction:
             elapsed = (datetime.now() - self.last_change).total_seconds()
-            cooldown = self.get_dynamic_cooldown()
+            cooldown = self.get_dynamic_cooldown(self.last_direction)
             if elapsed < cooldown:
                 return False, 'cooldown'
 
         return True, None
 
-    def time_remaining(self):
+    def time_remaining(self, direction=None):
         """
         Get seconds remaining on cooldown.
+
+        Args:
+            direction: Direction to check cooldown for (uses last_direction if None)
 
         Returns:
             float: Seconds until next zoom can execute (0 if ready)
         """
-        if not self.last_change:
+        if not self.last_change or not self.last_direction:
             return 0.0
 
+        # Use provided direction or fall back to last direction
+        check_direction = direction or self.last_direction
+
         elapsed = (datetime.now() - self.last_change).total_seconds()
-        cooldown = self.get_dynamic_cooldown()
+        cooldown = self.get_dynamic_cooldown(check_direction)
         remaining = cooldown - elapsed
         return max(0.0, remaining)
 
@@ -266,7 +295,7 @@ class ZoomTracker:
                 'accepted': False,
                 'reason': reason,
                 'keypress': None,
-                'cooldown_remaining': self.time_remaining() if reason == 'cooldown' else 0.0,
+                'cooldown_remaining': self.time_remaining(direction) if reason == 'cooldown' else 0.0,
                 'distance': self.distance_from_initial
             }
 
@@ -283,6 +312,7 @@ class ZoomTracker:
         self.last_change = datetime.now()
         self.last_user = user
         self.last_cause = cause
+        self.last_direction = direction  # Track direction for next cooldown check
         self.rejected_count = 0
 
         return {
@@ -308,10 +338,12 @@ class ZoomTracker:
             'max_distance': self.max_distance,
             'last_user': self.last_user,
             'last_cause': self.last_cause,
+            'last_direction': self.last_direction,
             'last_change': self.last_change.isoformat() if self.last_change else None,
             'rejected_count': self.rejected_count,
             'last_rejected_user': self.last_rejected_user,
-            'dynamic_cooldown': self.get_dynamic_cooldown(),
+            'cooldown_in': self.get_dynamic_cooldown('+'),  # Zoom in cooldown
+            'cooldown_out': self.get_dynamic_cooldown('-'),  # Zoom out cooldown
             'cooldown_remaining': self.time_remaining()
         }
 
@@ -521,8 +553,8 @@ class GameState:
     Central tracker for all stateful game commands.
 
     Handles:
-    - Info panels (0-4) - 15s shared cooldown, 0=hide, 1-4=show panel with smart state tracking
-    - Zoom (+/-) - Dynamic cooldown (1-120s) based on distance from initial
+    - Info panels (0-4) - 10s shared cooldown, 0=hide, 1-4=show panel with smart state tracking
+    - Zoom (+/-) - Directional cooldown: toward center=1s, away=exponential (1.0*1.1^distance, capped 120s)
 
     Self-regulating zoom system creates natural equilibrium at edge of chaos.
     """
@@ -537,7 +569,7 @@ class GameState:
         self.socketio = socketio
 
         # Info panels (0-4 with hide/show logic)
-        self.info_panels = InfoPanelGroup('info_panels', cooldown_seconds=15.0)
+        self.info_panels = InfoPanelGroup('info_panels', cooldown_seconds=10.0)
 
         # Zoom with distance-based dynamic cooldown
         self.zoom = ZoomTracker('zoom')
