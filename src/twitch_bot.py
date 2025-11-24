@@ -112,6 +112,74 @@ class SelectionBot(commands.AutoBot):
         self.valid_actions = set()
         self.game_commands_received = 0
 
+    def _validate_token(self):
+        """
+        Validate access token and check scopes.
+
+        Exits if token user doesn't match bot user (common auth mistake).
+        """
+        try:
+            url = "https://id.twitch.tv/oauth2/validate"
+            headers = {
+                "Authorization": f"Bearer {self._access_token}"
+            }
+
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+
+            token_user_id = data.get('user_id')
+            token_login = data.get('login')
+
+            print("\n" + "=" * 60)
+            print("Token Validation")
+            print("=" * 60)
+            print(f"Token User ID: {token_user_id}")
+            print(f"Token Login: {token_login}")
+            print(f"Bot ID (expected): {self.bot_id}")
+            print(f"Bot Username: {self._bot_username}")
+            print(f"Expires in: {data.get('expires_in')}s")
+            print(f"Scopes: {', '.join(data.get('scopes', []))}")
+
+            # Check if token user matches bot user (CRITICAL)
+            if str(token_user_id) != str(self.bot_id):
+                print(f"\n{'='*60}")
+                print("✗ FATAL: Token user mismatch")
+                print(f"{'='*60}")
+                print(f"\nToken belongs to: {token_login} (ID: {token_user_id})")
+                print(f"But bot expects: {self._bot_username} (ID: {self.bot_id})")
+                print(f"\nTo fix:")
+                print(f"  1. Log OUT of Twitch in your browser")
+                print(f"  2. Log IN as: {self._bot_username}")
+                print(f"  3. Delete .twitch_token")
+                print(f"  4. Run bot again to re-authorize")
+                print(f"\nThe token MUST be authorized by the bot account, not the channel owner.")
+                print(f"{'='*60}\n")
+                sys.exit(1)
+
+            # Check required scopes
+            required = ['chat:read', 'chat:edit', 'user:read:chat', 'user:write:chat', 'user:bot', 'channel:bot']
+            actual = set(data.get('scopes', []))
+            missing = [s for s in required if s not in actual]
+
+            if missing:
+                print(f"\n{'='*60}")
+                print("✗ FATAL: Missing required scopes")
+                print(f"{'='*60}")
+                print(f"\nMissing: {', '.join(missing)}")
+                print(f"\nDelete .twitch_token and re-authorize to get all scopes")
+                print(f"{'='*60}\n")
+                sys.exit(1)
+
+            print(f"\n✓ Token valid and matches bot user")
+            print(f"✓ All required scopes present")
+            print("=" * 60 + "\n")
+
+        except Exception as e:
+            print(f"\n✗ Token validation failed: {e}")
+            print(f"  Token may be invalid or expired\n")
+            sys.exit(1)
+
     async def connect_to_flask(self):
         """
         Connect to Flask server via SocketIO and fetch enabled actions.
@@ -148,6 +216,9 @@ class SelectionBot(commands.AutoBot):
                 'timestamp': datetime.now().isoformat()
             })
             print("✓ Bot status sent to Flask")
+
+            # Validate token and check scopes
+            self._validate_token()
 
             print("=" * 60)
             return True
@@ -194,8 +265,17 @@ class SelectionBot(commands.AutoBot):
             response.raise_for_status()
             return True
 
+        except requests.exceptions.HTTPError as e:
+            print(f"⚠ Failed to send chat message: HTTP {e.response.status_code}")
+            print(f"  URL: {url}")
+            print(f"  Response body: {e.response.text}")
+            print(f"  Headers used:")
+            print(f"    Client-ID: {self._client_id[:10]}...")
+            print(f"    Bot ID: {self.bot_id}")
+            print(f"    Channel ID: {self.channel_id}")
+            return False
         except Exception as e:
-            print(f"⚠ Failed to send chat message: {e}")
+            print(f"⚠ Failed to send chat message: {type(e).__name__}: {e}")
             return False
 
     def _register_vote_events(self):
@@ -402,8 +482,16 @@ class SelectionBot(commands.AutoBot):
         if success:
             print("✓ Startup announcement sent to chat")
         else:
-            print("⚠ Failed to send startup announcement")
-            print("  Bot will continue (receiving still works)")
+            print(f"\n{'='*60}")
+            print("✗ FATAL: Failed to send startup announcement")
+            print(f"{'='*60}")
+            print("\nPossible causes:")
+            print("  1. Token lacks required scopes (user:write:chat, channel:bot)")
+            print("  2. Bot not authorized for this channel")
+            print("  3. Token expired or invalid")
+            print(f"\nDelete .twitch_token and re-authorize with correct scopes")
+            print(f"{'='*60}\n")
+            sys.exit(1)
 
     async def _heartbeat(self):
         """Print periodic stats to show bot is alive."""

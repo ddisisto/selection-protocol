@@ -15,7 +15,7 @@ import requests
 import webbrowser
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 import threading
 import time
 
@@ -151,13 +151,13 @@ def get_user_access_token(client_id, client_secret, scopes=['chat:read', 'chat:e
     redirect_uri = f"http://localhost:{port}"
     scope_str = " ".join(scopes)
 
-    # Build authorization URL
+    # Build authorization URL (URL-encode scope parameter)
     auth_url = (
         f"https://id.twitch.tv/oauth2/authorize"
         f"?client_id={client_id}"
-        f"&redirect_uri={redirect_uri}"
+        f"&redirect_uri={quote(redirect_uri, safe='')}"
         f"&response_type=code"
-        f"&scope={scope_str}"
+        f"&scope={quote(scope_str, safe='')}"
     )
 
     print(f"\n{'='*70}")
