@@ -1,217 +1,181 @@
-# Selection Protocol - Session 6 Handover
+# Selection Protocol - Session 7 Handover
 
-**Date:** 2025-11-22
-**Phase:** Phase 1 Complete - Live Testing Phase
-**Status:** System operational, ready for real-world testing
-
----
-
-## Current State
-
-**Phase 1: Complete ✅**
-- Overlay server (Flask + SocketIO)
-- TwitchIO EventSub bot
-- Vote tracking system (k/l/x + first-L claimant)
-- Dynamic timer (30-120s, entropy-based)
-- Admin panel with vote injection
-- Window auto-discovery
-- CSS design system
-- End-to-end vote flow operational
-
-**What's Working:**
-```
-Twitch Chat → EventSub Bot → SocketIO → Flask → Vote Manager
-                                                      ↓
-                                         Broadcasts vote_update
-                                                      ↓
-                              Overlay Display + Admin Panel
-                                                      ↓
-                                         game_controller.py → xdotool
-                                                      ↓
-                                         The Bibites (auto-discovered window)
-```
-
-**Architecture Highlights:**
-- **Window Auto-Discovery:** Finds "The Bibites" at startup, fails fast if not found
-- **Elapsed-Time Timer:** Bounded 30-120s, immune to vote-based delay exploits
-- **CSS Design System:** 3-tier structure (base/admin/overlay), DRY tokens
-- **Admin Testing:** Vote injection (+/-), force execution (K/L/X), live state display
-- **First-L Claim Logic:** Tracks first L voter per round, lineage naming rights
+**Date:** 2025-11-24
+**Phase:** Phase 1 Complete - Polish & Enhancements
+**Status:** Core system operational, UI refinements needed
 
 ---
 
-## Session 6 Priorities
+## Quick Orientation
 
-### Priority 1: Documentation Review & Alignment
-**User Request:** "review PROJECT_BRIEF and README"
+**What We Have:**
+- Fully operational voting system (k/l/x)
+- Dynamic timer (30-120s, entropy-based, auto-execution)
+- Game commands (+/-/1-4/h/s) with self-regulating cooldowns
+- TwitchIO EventSub bot (chat → commands/votes)
+- Overlay display (votes, timer, first-L claimant)
+- Admin panel (testing interface)
 
-Tasks:
-1. Review [README.md](README.md) - align with current Phase 1 complete state
-2. Review [PROJECT_BRIEF.md](PROJECT_BRIEF.md) - update mechanics, remove outdated info
-3. Consolidate/update any other docs as needed
+**What's Next:**
+- Overlay UI polish (game state indicators need layout work)
+- Chat announcements (CTA, round events, outcomes)
+- Design discussions for visual feedback
 
-### Priority 2: Live Testing Preparation
-With Phase 1 complete, system is ready for real Twitch testing:
-1. End-to-end test with actual Twitch chat
-2. Multi-user voting scenarios
-3. Edge cases: ties, empty stream, rapid vote changes
-4. Performance under load
-
-### Priority 3: Polish & Quality
-Based on testing feedback:
-1. UI/UX improvements
-2. Error handling edge cases
-3. Logging clarity
-4. Performance optimization
+**Full Context:**
+- @CLAUDE.md - Workflows and patterns (START HERE)
+- @README.md - Project overview
+- @docs/archive/HANDOVER-SESSION-6.md - Last session's details
 
 ---
 
-## System Overview
+## Session 7 Priorities
 
-### Core Components
+### Priority 1: Design Discussion & UI Polish
+**Context:** Game state indicators implemented but need layout/design work
 
-**Server Side:**
-- `src/server.py` - Flask app, main entry point
-- `src/websocket.py` - SocketIO event handlers
-- `src/vote_manager.py` - Vote tracking, timer, first-L logic
-- `src/game_controller.py` - xdotool automation, window discovery
-- `src/twitch_bot.py` - EventSub integration
-- `src/oauth_flow.py` - Token management
-- `src/actions.py` - Action registry
-- `src/cooldowns.py` - Cooldown system (not used in admin panel)
-- `src/config.py` - Configuration
+**Branch:** `feature/game-state-overlay-ui` has working widgets:
+- Zoom controls (distance display, cooldown timers)
+- Info panel grid (2x2, active highlight)
+- Real-time SocketIO updates
 
-**Client Side:**
-- `src/templates/base.html` - Layout
-- `src/templates/overlay.html` - Vote display overlay
-- `src/templates/admin_panel.html` - Admin controls (left sidebar)
-- `src/static/base.css` - Design tokens, utilities, shared components
-- `src/static/overlay.css` - Overlay-specific styles
-- `src/static/admin.css` - Admin panel styles
-- `src/static/overlay.js` - Overlay display logic
-- `src/static/admin.js` - Admin panel interactions
+**Needs:**
+- Layout decisions (placement, sizing, spacing)
+- Visual feedback polish (animations, colors, states)
+- Integration with main overlay design
+- Testing with full vote display active
 
-### Running the System
+**Tasks:**
+1. Design discussion: Where do widgets go? How big? Style consistency?
+2. Iterate on layout/spacing/sizing
+3. Merge feature branch when polished
+4. Test integrated overlay (votes + game state together)
 
-**Terminal 1: Overlay Server**
-```bash
-source .venv/bin/activate
-python -m src.server
-# → http://localhost:5000
-# Auto-discovers game window at startup
-```
+### Priority 2: Chat Announcements (CTA Features)
+**Context:** Bot needs outbound messages for engagement
 
-**Terminal 2: Twitch Bot**
-```bash
-source .venv/bin/activate
-python -m src.twitch_bot --test  # 30s test mode
-python -m src.twitch_bot          # daemon mode
-```
+**From [docs/IDEAS.md](docs/IDEAS.md) Task 1:**
+- Every minute CTA if no recent votes ("Vote k/l/x to decide fate!")
+- Announce when voting opens ("Voting opened by @user: k")
+- Announce outcomes ("Round ended: L wins! @firstL claims lineage")
 
-**Browser:**
-- Overlay: http://localhost:5000/overlay
-- Admin Panel: http://localhost:5000 (left sidebar)
+**Implementation Notes:**
+- `round_start` event already exists (src/vote_manager.py:186)
+- Bot has SocketIO connection to Flask (receives events)
+- Need outcome event (round_end with winner/first-L)
+- Twitch rate limits: ~20 messages/30s (space announcements appropriately)
 
-### Key Mechanics
-
-**Vote System:**
-- One person, one vote (latest replaces previous)
-- k = Kill (Delete key), l = Lay egg (Insert key), x = Extend (do nothing)
-- First L voter gets naming claim, loses if they switch away
-
-**Timer System:**
-- Base: 30s minimum
-- Extended by vote entropy (Shannon entropy formula)
-- Maximum: 120s total round duration
-- Elapsed-time based (immune to delay exploits)
-- Formula: `30 + (entropy × 90)`
-
-**Admin Panel:**
-- **Vote Injection:** +/- buttons add/remove test votes with random usernames
-- **Force Execution:** K/L/X buttons execute immediately (bypass timer)
-- **Camera Controls:** Direct keypress (no cooldowns)
-- **Live State:** Real-time vote counts, timer, first-L claimant
-
-**Window Targeting:**
-- Auto-discovers "The Bibites" window at server startup
-- Fails fast if not found or multiple windows
-- xdotool delivers keypresses via window ID
+### Priority 3: Optional - Lineage Tagging Prep
+**If time permits:**
+- Plan mouse automation for applying tags (pyautogui? xdotool?)
+- Design tag format (username length limits, sanitization)
+- Test tagging flow manually
+- Not required for Session 7, but good to explore
 
 ---
 
-## Recent Changes (Session 5)
+## Current System State
 
-**Major Achievements:**
-1. **CSS Design System** - Extracted 600+ lines inline CSS → DRY token system
-2. **Admin Panel Refactor** - Testing-focused 3x3 grid interface
-3. **Window Auto-Discovery** - Fail-fast validation, no hardcoded IDs
-4. **Timer System Fixes** - Extension bug, "VOTE NOW!" display, elapsed-time system
+**Architecture:**
+```
+Twitch Chat → EventSub Bot → SocketIO → Flask Server
+                                              ↓
+                              Vote Manager + Game State
+                                              ↓
+                              Broadcasts (vote_update, game_state_update)
+                                              ↓
+                              Overlay + Admin Panel (displays)
+                                              ↓
+                              game_controller → xdotool → The Bibites
+```
 
-**Commits:**
-- CSS refactor (design system)
-- Admin panel refactor (vote injection)
-- Window auto-discovery
-- Cooldown removal from admin panel
-- Timer extension fix + "VOTE NOW!" display
-- Elapsed-time timer system
+**Key Files:**
+- `src/server.py` - Flask app, instantiates vote_manager + game_state
+- `src/vote_manager.py` - Votes, timer, execution, round_start event
+- `src/game_state.py` - Commands, cooldowns, state tracking
+- `src/twitch_bot.py` - EventSub, parses votes + commands
+- `src/websocket.py` - SocketIO handlers (votes, commands, events)
+- `src/templates/overlay.html` - Vote display
+- `src/static/overlay.js` - SocketIO listeners, rendering
+
+**Branches:**
+- `main` - Clean, operational backend (current)
+- `feature/game-state-overlay-ui` - UI widgets (needs polish)
+
+**Recent Commits:**
+```
+465dacd - Implement self-regulating game state system
+73739cc - Add chat commands for game controls
+a83544b - Implement elapsed-time-based timer
+```
+
+---
+
+## Testing Checklist
+
+Before going live, verify:
+- [ ] Votes from Twitch chat work (k/l/x)
+- [ ] Timer counts down correctly (30-120s dynamic)
+- [ ] Winner executes (K→Delete, L→Insert, tie→nothing)
+- [ ] Game commands work (+/-/1-4/h/s)
+- [ ] Cooldowns scale properly (zoom 1-120s, panels 15s)
+- [ ] Overlay displays everything (votes, timer, claimant)
+- [ ] Admin panel testing tools work (vote injection, force execute)
+- [ ] Multiple Twitch users (if possible - edge case testing)
 
 ---
 
 ## Known Gotchas
 
-**Window Discovery:**
-- Game must be running before starting server
-- Server will exit with clear error if window not found
-- Window ID can change on game restart (auto-discovery handles this)
+**Game Window:**
+- Must be running before server starts (auto-discovery)
+- Server exits with error if not found (fail-fast)
 
-**First-L Claim Logic:**
-- User votes L → gets claim
-- User switches to K/X → loses claim to next L voter
-- Multiple L voters → only first by timestamp has claim
-- Test with multiple accounts before trusting
+**Twitch Bot:**
+- Separate process from server (2 terminals)
+- Requires OAuth flow first time (browser opens)
+- Token cached in `.twitch_token` (auto-refresh)
 
-**Timer System:**
-- Bounded 30-120s total (immune to delay exploits)
-- Empty stream defaults to 30s (no votes = minimum timer)
-- Displays "VOTE NOW!" when timer inactive (white, 36px)
-- Countdown shown in accent color (green/yellow/red), 54px
+**UI Feature Branch:**
+- Don't merge until design discussion complete
+- Overlay needs layout decisions before polish
+- Main branch is clean for parallel work
 
-**OAuth Tokens:**
-- Cached in `.twitch_token` (gitignored)
-- Auto-refreshes every 4 hours
-- Bot must be authorized by channel owner
-- Scopes: `chat:read`, `chat:edit`, `user:read:chat`, `user:write:chat`, `user:bot`, `channel:bot`
+**Self-Regulating Cooldowns:**
+- Zoom cooldown scales with distance (1-120s)
+- Info panels reject current selection (prevents toggle)
+- UI commands (h/s) reject redundant state (h when hidden)
 
-**Admin Panel:**
-- No cooldowns (immediate execution)
-- Vote injection creates test_XXXXXX usernames
-- Force execution bypasses timer entirely
-- Camera controls are direct keypresses
+---
+
+## Session 7 Success Criteria
+
+**Minimum:**
+- UI polish discussion complete (decisions made)
+- Feature branch merged OR clear plan for merge
+
+**Ideal:**
+- Overlay UI polished and merged
+- Chat announcements implemented (CTA + round events)
+- Full end-to-end test with complete system
+
+**Stretch:**
+- Lineage tagging exploration
+- Multi-user testing scenarios
 
 ---
 
 ## Documentation Structure
 
-For complete context, see:
-- **[CLAUDE.md](CLAUDE.md)** - Workflows, patterns, methodologies (START HERE)
-- **[README.md](README.md)** - Project overview & quick start
-- **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)** - Full technical spec
+For complete context:
+- **[CLAUDE.md](CLAUDE.md)** - Workflows, patterns, start here
+- **[README.md](README.md)** - Project overview
+- **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)** - Technical spec
 - **[CONTEXT.md](CONTEXT.md)** - Design philosophy
-- **[VOTING_RULES.md](VOTING_RULES.md)** - Vote mechanics reference
-- **[docs/archive/](docs/archive/)** - Historical handovers (Sessions 0-5)
+- **[VOTING_RULES.md](docs/VOTING_RULES.md)** - Vote mechanics
+- **[docs/archive/](docs/archive/)** - Historical handovers (0-6)
 
 ---
 
-## Next Session Start Checklist
-
-1. Read [CLAUDE.md](CLAUDE.md) for workflows and patterns
-2. Read this HANDOVER.md for current state
-3. Check recent git log for context
-4. Review Priority 1 tasks (documentation alignment)
-5. Run system locally to verify operational state
-
----
-
-> **Phase 1 Complete** - System operational, democracy functional
-> **Next:** Documentation alignment, live testing, polish
-> **Status:** Ready for real-world Twitch deployment
+> **Session 7 Starting Point** - Core complete, polish time
+> **Focus:** Design, visual feedback, chat engagement
+> **Philosophy:** Transparency teaches dynamics, self-regulation creates equilibrium

@@ -1,6 +1,9 @@
+# next - overload 'x' vote
+when 'x' vote >= 50% of total, countdown pauses. block intervention.
+
 # Voting default = 30s
 which is also = voting round min time.
-I want to center this, allow it to go down to 5% per additional unopposed vote, with 5s min.
+I want to center this, allow it to go down by relative 5% per additional unopposed vote, with 5s min. wonder if simple % scaling would have been smarter than shannon entropy we used for existing timer implementation?
 
 # session 6 command refinements, cooldowns
 follow up: admin chat commands that e.g. flip h/s toggle state, pause the sim (key: space), halt voting, commands, etc. must be from username in local config, or maybe later delegated. allows me to admin this from my phone.

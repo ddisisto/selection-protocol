@@ -1,7 +1,7 @@
 # Selection Protocol - Project Brief
 
-**Status:** Phase 1 nearly complete (5/6 done - overlay display needed)
-**Date:** 2025-11-21 (updated Session 3)
+**Status:** Phase 1 Complete - System Operational
+**Date:** 2025-11-24 (updated Session 6)
 
 ---
 
@@ -21,36 +21,39 @@ Chat votes every ~60 seconds on three actions for the currently auto-followed bi
 ## Current State (What Exists)
 
 ### ✅ Operational Infrastructure
-- **The Bibites** simulation running via Steam/Proton (PID 1377474, Window ID 132120577)
-- **Flask overlay server** with full-page black background (OBS "lighten" blend mode)
-- **Admin control panel** (left sidebar, 300px, cropped from stream)
-  - Game actions: Delete (Kill), Insert (Lay), x (Extend)
-  - Camera modes: Ctrl+G (Generation), Ctrl+O (Oldest), Ctrl+R (Random)
-  - Zoom: KP+ / KP- (keypad plus/minus)
-  - Timer controls, status display, bot connection indicator
-- **Auto-follow camera** (currently: random mode, switchable)
-- **Cooldown system** operational:
-  - Primary actions (Del/Ins): 15s shared cooldown
-  - Camera: 10s shared cooldown
-  - Zoom: 5s individual cooldowns
-  - Extend: 30s cooldown
-- **WebSocket state sync** (overlay ↔ admin panel ↔ bot)
-- **xdotool keypress automation** working perfectly
-- **TwitchIO EventSub bot** receiving chat messages (replaces deprecated IRC)
-- **OAuth authorization flow** with token caching and auto-refresh
-- **Action registry** (extensible DRY system for k/l/x commands)
-- **Vote manager** tracking votes + first-L claimant logic
-- **End-to-end vote flow** operational (chat → bot → Flask → vote_manager)
 
-### ❌ Missing Components (Phase 1)
-- **Vote display in overlay** (data broadcasts work, HTML needs update)
+**Core System:**
+- **The Bibites** simulation via Steam/Proton (window auto-discovered at startup)
+- **Flask overlay server** with full-page black background (OBS "lighten" blend mode)
+- **TwitchIO EventSub bot** - Receives chat, parses votes + commands
+- **OAuth authorization flow** - Token caching, auto-refresh
+- **WebSocket state sync** - Real-time updates (overlay ↔ admin ↔ bot)
+- **xdotool keypress automation** - Window targeting, fail-fast validation
+
+**Voting System:**
+- **Vote manager** - Tracks k/l/x votes, first-L claimant logic
+- **Dynamic timer** - 30-120s based on Shannon entropy of vote ratios
+- **Elapsed-time tracking** - Immune to delay exploits, bounded duration
+- **Automated execution** - Timer expiry → winner determination → keypress
+- **Overlay display** - Real-time counts, timer countdown, first-L claimant
+
+**Game Commands (Chat → Direct Execution):**
+- **Zoom** (`+`/`-`) - Self-regulating cooldowns (1-120s based on distance ±50)
+- **Info Panels** (`1`/`2`/`3`/`4`) - 15s cooldown, rejects current panel (prevents toggle)
+- **UI Visibility** (`h`/`s`) - Explicit hide/show, 2s cooldown, state tracking
+- **Game State** - Tracks metadata (current/previous, user, cause, rejections)
+
+**Admin Panel:**
+- **Vote injection** - Add/remove test votes for testing
+- **Force execution** - K/L/X immediate override (no cooldowns)
+- **Camera controls** - Direct keypresses (no cooldowns)
+- **Live state display** - Vote counts, timer, first-L claimant, action log
 
 ### 📅 Planned (Phase 2+)
-- Automated vote resolution → keypress execution
-- Vote cycle timer (60s cycles with countdown)
-- Tie-break window (10s after tie detected)
-- Lineage tagging system (username → game tag before Insert)
-- Chat commands (!lineage, !stats)
+- Lineage tagging system (username → parent before Insert keypress)
+- Overlay UI polish (game state indicators branched, needs layout work)
+- Chat announcements (CTA, round start/end, outcome notifications)
+- Community commands (!lineage, !stats)
 - Vote history persistence (SQLite)
 
 ---
@@ -78,10 +81,11 @@ Chat votes every ~60 seconds on three actions for the currently auto-followed bi
 3. **Claim is live/contested** until window closes
 4. **If L wins:** First L claimant's username tags parent bibite
 
-**Tie-Breaking:**
-- If K/L/X tied → 10s tie-break window opens
-- **First L vote during tie-break:** Immediately resolves + claims lineage
-- If tie-break expires: Default to X (extend)
+**Winner Determination:**
+- K wins IF: K > 33% AND K > L
+- L wins IF: L > 33% AND L > K
+- X wins (no action) IF: Neither K nor L > 33%, OR K = L (tie)
+- Tie-break window deferred to Phase 2
 
 ### Why This Works
 
@@ -101,6 +105,50 @@ Chat votes every ~60 seconds on three actions for the currently auto-followed bi
 - Works with 1 viewer or 1000
 - Empty stream = natural selection continues
 - Single voter = THE god (not A god)
+
+---
+
+## Game Commands (Direct Control)
+
+**Unlike votes (k/l/x), game commands execute immediately with self-regulating cooldowns.**
+
+### Command Types
+
+**Zoom Control:**
+- `+` / `-` - Zoom in/out
+- **Self-regulating cooldown:** 1s at center → 120s at limits (±50)
+- **Distance tracking:** Current zoom relative to initial state
+- **Hard limits:** Rejects at ±50 distance (prevents extreme zoom)
+- **Philosophy:** System naturally resists extremes, creates equilibrium at edge of chaos
+
+**Info Panels:**
+- `1` / `2` / `3` / `4` - Select game info panel to display
+- **15s cooldown** (time to read panel content)
+- **Rejects current:** Selecting active panel rejected (prevents unwanted toggle)
+- **State tracking:** Current/previous panel, last user, rejection count
+
+**UI Visibility:**
+- `h` - Hide UI (clean view of simulation)
+- `s` - Show UI (restore interface)
+- **Explicit commands:** Not a toggle - must specify intent
+- **2s cooldown**
+- **State tracking:** Current visibility state, rejects redundant commands
+
+### Self-Regulating Design
+
+**Why dynamic cooldowns:**
+- Fixed cooldowns → always maxed or always available (no complexity)
+- Dynamic cooldowns → creates tension between viewer desires and system limits
+- Distance-based scaling → natural rubber-banding effect
+- Viewers learn system dynamics through transparency
+
+**Zoom formula:**
+```python
+cooldown = 1s + (|distance| / 50) * 119s
+# At distance 0: 1 second
+# At distance 25: ~60 seconds
+# At distance 50: 120 seconds
+```
 
 ---
 
@@ -129,20 +177,32 @@ The Bibites has built-in tag inheritance - tags applied to parent automatically 
 
 ## Technical Architecture
 
+**Vote Flow:**
 ```
-Twitch Chat (IRC)
+Twitch Chat → EventSub WebSocket → Bot (parse k/l/x)
     ↓
-TwitchIO Bot (parse k/l/x commands)
+Vote Manager (track votes, first-L claim)
     ↓
-Vote Manager (track votes, timer, first-L claim)
+Timer (30-120s dynamic, entropy-based)
     ↓
-Vote Resolver (determine winner, handle ties)
+Winner Determination (>33% + majority logic)
     ↓
-Action Executor (send keypress via WebSocket to admin panel)
+Keypress Execution (Delete/Insert/nothing)
     ↓
-Lineage Tagger (apply username to game BEFORE Insert)
+Overlay Updates (vote_update broadcasts)
+```
+
+**Game Command Flow:**
+```
+Twitch Chat → EventSub WebSocket → Bot (parse +/-/1-4/h/s)
     ↓
-Overlay Updates (broadcast vote state, results, lineage stats)
+Game State (validation, cooldown check, state tracking)
+    ↓
+Accept/Reject Decision
+    ↓
+If Accepted: Keypress Execution (KP_Add/1/h/etc)
+    ↓
+Broadcast (game_state_update events)
 ```
 
 ### Integration Points

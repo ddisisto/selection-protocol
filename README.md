@@ -21,19 +21,21 @@ Selection Protocol is a Twitch streaming experiment where chat votes every ~60 s
 - Keypress automation (xdotool → The Bibites)
 - OAuth authorization code flow (user access tokens)
 - Token caching and refresh logic
-- TwitchIO EventSub bot (receives chat messages)
-- Action registry (extensible k/l/x system)
-- Vote manager (tracks votes, first-L claimant logic)
-- SocketIO integration (bot ↔ Flask communication)
-- End-to-end vote flow (chat → bot → Flask → vote manager)
-
-**🚧 In Progress:**
-- Vote display in overlay (vote_manager ready, HTML needs update)
+- TwitchIO EventSub bot (receives chat messages, parses commands)
+- Vote system (k/l/x) with first-L claimant logic
+- Dynamic timer (30-120s, entropy-based, elapsed-time tracking)
+- Automated vote execution (timer expires → winner executes)
+- Game commands (+/- zoom, 1/2/3/4 info panels, h/s UI visibility)
+- Self-regulating cooldown system (distance-based, prevents extremes)
+- SocketIO integration (bot ↔ Flask ↔ vote_manager ↔ game_state)
+- Window auto-discovery (fail-fast validation)
+- Vote display in overlay (real-time counts, timer, first-L claimant)
 
 **❌ Phase 2 (Not Started):**
-- Automated vote execution (Phase 2)
-- Lineage tagging system (Phase 3)
-- Community features (Phase 4)
+- Lineage tagging system (username → parent before Insert)
+- Overlay UI polish (branched to feature/game-state-overlay-ui)
+- Chat announcements (CTA, round start/end, outcomes)
+- Community features (!lineage, !stats commands)
 
 ## Quick Start
 
@@ -82,8 +84,8 @@ Latest vote replaces previous. No weight manipulation.
 ### First L gets naming rights
 Until they switch away. Creates strategic tension.
 
-### Ties open 10s window
-Single L vote steals lineage and breaks tie.
+### Majority wins, ties default to X
+K or L needs >33% AND majority. Ties result in no action.
 
 ### Democracy at any scale
 Works with 1 viewer or 1000. Empty stream = autonomous evolution.
@@ -109,8 +111,10 @@ Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager → 
 ```
 
 **Key Components:**
-- **Action Registry** ([src/actions.py](src/actions.py)) - Extensible action definitions
-- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking + first-L logic
+- **Action Registry** ([src/actions.py](src/actions.py)) - Vote command definitions (k/l/x)
+- **Game Commands** ([src/game_commands.py](src/game_commands.py)) - Direct commands (+/-/1-4/h/s)
+- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking, timer, execution
+- **Game State** ([src/game_state.py](src/game_state.py)) - Command cooldowns, self-regulation
 - **EventSub Bot** ([src/twitch_bot.py](src/twitch_bot.py)) - Twitch chat integration
 - **Flask Server** ([src/server.py](src/server.py)) - Overlay + admin panel + SocketIO
 - **Game Controller** ([src/game_controller.py](src/game_controller.py)) - xdotool automation
