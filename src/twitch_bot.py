@@ -16,6 +16,54 @@ import sys
 from .game_commands import is_valid_command, get_keypress_for_command
 
 
+def parse_first_word(message):
+    """
+    Parse first word from message following CHAT_UX.md spec.
+
+    Extracts FIRST valid command character(s) before word boundary.
+    Everything after first whitespace is commentary (ignored).
+
+    Rules:
+    - First word must be all repetitions of ONE character (case-insensitive)
+    - Returns normalized lowercase char if valid
+    - Returns None if invalid
+
+    Examples:
+        "k" → 'k'
+        "k boring kill it" → 'k'
+        "kkKkK! IT MUST DIE" → 'k'
+        "l first!" → 'l'
+        "+ zoom in" → '+'
+        "I think k" → None (first char is 'i', not valid command)
+        "let it live" → None (first word has multiple different chars)
+
+    Args:
+        message: Raw chat message
+
+    Returns:
+        str or None: Normalized command char or None if invalid
+    """
+    if not message:
+        return None
+
+    # Split by whitespace, take first word
+    first_word = message.split()[0] if message.split() else message
+
+    # Remove all non-alphanumeric except +/- (valid command chars)
+    # This handles "kkK!" → "kkK"
+    cleaned = ''.join(c for c in first_word if c.isalnum() or c in ['+', '-'])
+
+    if not cleaned:
+        return None
+
+    # Check if all characters are the same (case-insensitive)
+    normalized = cleaned.lower()
+    if len(set(normalized)) == 1:
+        return normalized[0]
+
+    return None
+
+
 class SelectionBot(commands.AutoBot):
     """
     Twitch EventSub bot for parsing vote commands (k/l/x) from chat.
@@ -260,42 +308,46 @@ class SelectionBot(commands.AutoBot):
         # Log ALL chat messages
         print(f"[{timestamp}] {username}: {text}")
 
-        # Parse commands
-        text_lower = text.lower().strip()
+        # Parse first word from message (CHAT_UX.md spec)
+        command = parse_first_word(text)
+
+        # Skip if no valid command parsed
+        if not command:
+            return
 
         # Check if message is a valid vote command (k/l/x)
-        if text_lower in self.valid_actions:
+        if command in self.valid_actions:
             self.votes_received += 1
 
             # Log vote (highlighted)
-            print(f"  → VOTE: {text_lower.upper()}")
+            print(f"  → VOTE: {command.upper()}")
 
             # Send vote to Flask via SocketIO
             try:
                 await self.sio.emit('vote_cast', {
                     'username': username,
-                    'vote': text_lower,
+                    'vote': command,
                     'timestamp': datetime.now().isoformat()
                 })
             except Exception as e:
                 print(f"  ⚠ Failed to send vote to Flask: {e}")
 
         # Check if message is a valid game command (+/-/1/2/3/4/h/s)
-        elif is_valid_command(text_lower):
+        elif is_valid_command(command):
             self.game_commands_received += 1
 
             # Get the keypress to send
-            keypress = get_keypress_for_command(text_lower)
+            keypress = get_keypress_for_command(command)
 
             # Log command (highlighted)
-            print(f"  → COMMAND: {text_lower} (keypress: {keypress})")
+            print(f"  → COMMAND: {command} (keypress: {keypress})")
 
             # Send command to Flask via SocketIO
             # NOTE: No rate limiting yet - add per-user cooldowns before live deployment
             try:
                 await self.sio.emit('game_command', {
                     'username': username,
-                    'command': text_lower,
+                    'command': command,
                     'keypress': keypress,
                     'timestamp': datetime.now().isoformat()
                 })
