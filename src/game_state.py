@@ -239,10 +239,10 @@ class ZoomTracker:
         if direction == '-' and self.distance_from_initial <= self.min_distance:
             return False, 'limit_reached'
 
-        # Check cooldown (based on last direction taken)
-        if self.last_change and self.last_direction:
+        # Check cooldown (based on requested direction)
+        if self.last_change:
             elapsed = (datetime.now() - self.last_change).total_seconds()
-            cooldown = self.get_dynamic_cooldown(self.last_direction)
+            cooldown = self.get_dynamic_cooldown(direction)
             if elapsed < cooldown:
                 return False, 'cooldown'
 
