@@ -165,7 +165,12 @@ def handle_vote_cast(data):
     if success:
         print(f"Vote recorded: {username} → {vote.upper()}")
     else:
-        print(f"Invalid vote ignored: {username} → {vote}")
+        # Check if user already has this vote (duplicate)
+        current_vote = vote_manager.votes.get(username, {}).get('vote')
+        if current_vote == vote:
+            print(f"Duplicate vote ignored: {username} → {vote.upper()} (already voted {vote.upper()})")
+        else:
+            print(f"Invalid vote ignored: {username} → {vote}")
 
     return {'success': success}
 

@@ -66,7 +66,7 @@ class VoteManager:
             timestamp: Vote timestamp (defaults to now)
 
         Returns:
-            bool: True if vote was recorded, False if invalid
+            bool: True if vote was recorded, False if invalid or duplicate
         """
         # Validate vote
         if not is_valid_action(vote):
@@ -74,6 +74,10 @@ class VoteManager:
 
         timestamp = timestamp or datetime.now()
         previous_vote = self.votes.get(username, {}).get('vote')
+
+        # Reject duplicate votes (same as current)
+        if previous_vote == vote:
+            return False
 
         # Record vote
         self.votes[username] = {
