@@ -91,6 +91,9 @@ class SelectionBot(commands.AutoBot):
             self.valid_actions = set(actions)
             print(f"✓ Loaded {len(self.valid_actions)} valid actions: {sorted(self.valid_actions)}")
 
+            # Register event handlers for vote_manager events
+            self._register_vote_events()
+
             # Send bot connection status
             await self.sio.emit('bot_connected', {
                 'bot_id': self.bot_id,
@@ -110,6 +113,95 @@ class SelectionBot(commands.AutoBot):
             print("=" * 60)
             sys.exit(1)
 
+    async def _send_chat_message(self, message):
+        """
+        Send a message to Twitch chat.
+
+        Args:
+            message: Text to send to chat
+
+        Returns:
+            bool: True if sent successfully, False otherwise
+        """
+        try:
+            url = "https://api.twitch.tv/helix/chat/messages"
+            headers = {
+                "Client-ID": self._client_id,
+                "Authorization": f"Bearer {self._access_token}",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "broadcaster_id": self.channel_id,
+                "sender_id": self.bot_id,
+                "message": message
+            }
+
+            response = requests.post(url, headers=headers, json=data)
+            response.raise_for_status()
+            return True
+
+        except Exception as e:
+            print(f"⚠ Failed to send chat message: {e}")
+            return False
+
+    def _register_vote_events(self):
+        """
+        Register SocketIO event handlers for vote_manager events.
+
+        Handles:
+        - round_start: Announce round opened by first voter
+        - round_end: Announce winner and vote summary
+        """
+        @self.sio.on('round_start')
+        async def on_round_start(data):
+            """Handle round start announcement."""
+            username = data.get('username', 'Unknown')
+            vote = data.get('vote', '').upper()
+            timer = data.get('timer_limit', 30)
+
+            message = f"Voting opened by @{username}: {vote}, {timer}s to have your say: K,L,X"
+            success = await self._send_chat_message(message)
+
+            if success:
+                print(f"✓ Round start announced: {username} voted {vote}")
+            else:
+                print(f"✗ Failed to announce round start")
+
+        @self.sio.on('round_end')
+        async def on_round_end(data):
+            """Handle round end summary."""
+            winner = data.get('winner', 'x')
+            k_votes = data.get('k_votes', 0)
+            l_votes = data.get('l_votes', 0)
+            x_votes = data.get('x_votes', 0)
+            claimant = data.get('first_l_claimant')
+
+            # Build vote count string (omit zeros)
+            vote_parts = []
+            if k_votes > 0:
+                vote_parts.append(f"K:{k_votes}")
+            if l_votes > 0:
+                vote_parts.append(f"L:{l_votes}")
+            if x_votes > 0:
+                vote_parts.append(f"X:{x_votes}")
+            vote_str = ", ".join(vote_parts) if vote_parts else "No votes"
+
+            # Build message based on winner
+            if winner == 'k':
+                message = f"K wins! Kill executed ({vote_str}) • Round reset"
+            elif winner == 'l':
+                claimant_str = f"@{claimant}" if claimant else "Unknown"
+                message = f"L wins! {claimant_str} claims lineage • Lay executed ({vote_str}) • Round reset"
+            else:  # x wins
+                message = f"X wins (tie/no action) • {vote_str} • Round reset"
+
+            success = await self._send_chat_message(message)
+
+            if success:
+                print(f"✓ Round end announced: {winner.upper()} wins")
+            else:
+                print(f"✗ Failed to announce round end")
+
     async def event_ready(self):
         """Called when bot connects to Twitch EventSub."""
         print(f"\n{'='*60}")
@@ -120,7 +212,7 @@ class SelectionBot(commands.AutoBot):
         print(f"Connected at: {self.start_time.strftime('%H:%M:%S')}")
         print(f"\nListening for:")
         print(f"  Votes: k (kill), l (lay), x (extend)")
-        print(f"  Commands: +/- (zoom), 1/2/3/4 (info panels), h (hide UI)")
+        print(f"  Commands: +/- (zoom), 1/2/3/4 (info panels), h/s (hide/show UI)")
         print(f"{'='*60}\n")
 
         # Subscribe to chat messages for our channel
@@ -188,7 +280,7 @@ class SelectionBot(commands.AutoBot):
             except Exception as e:
                 print(f"  ⚠ Failed to send vote to Flask: {e}")
 
-        # Check if message is a valid game command (+/-/1/2/3/4/h)
+        # Check if message is a valid game command (+/-/1/2/3/4/h/s)
         elif is_valid_command(text_lower):
             self.game_commands_received += 1
 
@@ -246,24 +338,10 @@ class SelectionBot(commands.AutoBot):
         # Wait a moment for EventSub to be fully ready
         await asyncio.sleep(2)
 
-        try:
-            # Send message using Twitch API (EventSub doesn't send via WebSocket)
-            # We'll use the chat send endpoint
-            url = "https://api.twitch.tv/helix/chat/messages"
-            headers = {
-                "Client-ID": self._client_id,
-                "Authorization": f"Bearer {self._access_token}",
-                "Content-Type": "application/json"
-            }
-            data = {
-                "broadcaster_id": self.channel_id,
-                "sender_id": self.bot_id,
-                "message": "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 1/2/3/4 (info) | h (hide UI)"
-            }
+        message = "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 1/2/3/4 (info) | h/s (hide/show UI)"
+        success = await self._send_chat_message(message)
 
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-
+        if success:
             print("✓ Startup announcement sent to chat")
 
             # Wait up to 5 seconds for verification
@@ -275,8 +353,8 @@ class SelectionBot(commands.AutoBot):
             if not self.startup_message_verified:
                 print("⚠ Startup message not verified (didn't see reflection in 5s)")
                 print("  Chat sending may work, but EventSub reflection not confirmed")
-        except Exception as e:
-            print(f"⚠ Failed to send startup announcement: {e}")
+        else:
+            print("⚠ Failed to send startup announcement")
             print("  Bot will continue (receiving still works)")
 
     async def _heartbeat(self):

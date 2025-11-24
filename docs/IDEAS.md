@@ -1,3 +1,13 @@
+# Voting default = 30s
+which is also = voting round min time.
+I want to center this, allow it to go down to 5% per additional unopposed vote, with 5s min.
+
+# session 6 command refinements, cooldowns
+follow up: admin chat commands that e.g. flip h/s toggle state, pause the sim (key: space), halt voting, commands, etc. must be from username in local config, or maybe later delegated. allows me to admin this from my phone.
+
+# session 6.2 command patterns, chat ux discussion, overlay, consistency
+
+
 # Session 6 twitch enhancements
 
 1. bot CTA & updates
@@ -14,6 +24,7 @@ on vote close, announce outcome.
 plumb chat commands:
 - "+", "-": zoom (already in game_controller + admin_panel)
 - "1", "2", "3", "4", "h": forward keystroke (1, 2, 3, 4, or h) to game (not yet in controller, easy to add)
+- 
 I may come regret this, but no rate limit for now. maybe a placeholder or reminder to add later.
 
 

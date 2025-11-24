@@ -62,11 +62,18 @@ GAME_COMMANDS = {
         'enabled': True
     },
 
-    # UI toggle
+    # UI visibility (explicit commands, not toggle)
     'h': {
         'name': 'Hide UI',
-        'description': 'Toggle UI visibility (clean view)',
+        'description': 'Hide UI for clean view',
         'keypress': 'h',
+        'category': 'ui',
+        'enabled': True
+    },
+    's': {
+        'name': 'Show UI',
+        'description': 'Show UI (make visible)',
+        'keypress': 'h',  # Game only has toggle, but we track state
         'category': 'ui',
         'enabled': True
     }

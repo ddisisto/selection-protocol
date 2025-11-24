@@ -16,6 +16,7 @@ from datetime import datetime
 
 from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
+from .game_state import GameState
 from .game_controller import discover_game_window, set_game_window_id
 
 # Initialize Flask app
@@ -55,9 +56,12 @@ def log_action(action, details=""):
 # Initialize vote manager (owns vote state)
 vote_manager = VoteManager(socketio, log_action)
 
+# Initialize game state (owns command state, cooldowns, tracking)
+game_state = GameState(socketio)
+
 # Setup WebSocket handlers (legacy vote_state for backward compat with admin panel)
 vote_state = {}  # Deprecated - vote_manager owns state now
-broadcast_states = setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager)
+broadcast_states = setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager, game_state)
 
 
 # Background timer task

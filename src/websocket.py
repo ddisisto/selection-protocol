@@ -11,7 +11,7 @@ from flask_socketio import emit
 from .game_controller import send_keypress
 
 
-def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager=None):
+def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager=None, game_state=None):
     """
     Register all SocketIO event handlers.
 
@@ -21,6 +21,7 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
         admin_state: Global admin state dictionary
         log_action: Logging function for admin actions
         vote_manager: VoteManager instance (new, replaces vote_state)
+        game_state: GameState instance for command tracking and cooldowns
     """
 
     def broadcast_states():
@@ -37,6 +38,10 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
 
         # Send current states to newly connected client
         emit('admin_state_update', admin_state)
+
+        # Send current game state if available
+        if game_state:
+            emit('game_state_update', game_state.get_state())
 
     @socketio.on('disconnect')
     def handle_disconnect():
@@ -220,24 +225,62 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
     @socketio.on('game_command')
     def handle_game_command(data):
         """
-        Handle game commands from Twitch chat (+/-/1/2/3/4/h).
+        Handle game commands from Twitch chat (+/-/1/2/3/4/h/s).
 
-        These bypass voting and execute immediately.
-        NOTE: No rate limiting yet - add per-user cooldowns before live deployment.
+        Uses game_state for cooldown enforcement and state tracking.
+        Sends structured accept/reject responses for overlay feedback.
 
         Args:
             data: Dict with 'username', 'command', 'keypress', 'timestamp'
         """
         username = data.get('username', 'Unknown')
         command = data.get('command', '')
-        keypress = data.get('keypress', '')
 
-        # Send the keypress to game
-        result = send_keypress(keypress, log_action)
+        # Use game_state if available for validation and tracking
+        if game_state:
+            # Validate and track command through game_state
+            result = game_state.handle_command(command, username, cause='chat')
 
-        if result['success']:
-            log_action(f"Game command: {command}", f"From {username} (keypress: {keypress})")
+            if result['accepted']:
+                # Execute the keypress
+                keypress = result['keypress']
+                exec_result = send_keypress(keypress, log_action)
+
+                if exec_result['success']:
+                    log_action(f"Game command: {command}", f"From {username} (keypress: {keypress})")
+                else:
+                    log_action(f"Game command FAILED: {command}", f"From {username} - {exec_result.get('error', 'Unknown')}")
+            else:
+                # Command rejected (cooldown or already in state)
+                reason = result['reason']
+                cooldown_remaining = result.get('cooldown_remaining', 0)
+
+                if reason == 'cooldown':
+                    log_action(f"Game command REJECTED: {command}", f"From {username} - on cooldown ({cooldown_remaining:.1f}s)")
+                elif reason == 'already_in_state':
+                    log_action(f"Game command REJECTED: {command}", f"From {username} - already in target state")
+                elif reason == 'already_selected':
+                    log_action(f"Game command REJECTED: {command}", f"From {username} - panel already selected")
+                elif reason == 'limit_reached':
+                    log_action(f"Game command REJECTED: {command}", f"From {username} - zoom limit reached")
+                else:
+                    log_action(f"Game command REJECTED: {command}", f"From {username} - {reason}")
+
         else:
-            log_action(f"Game command FAILED: {command}", f"From {username} - {result.get('error', 'Unknown error')}")
+            # Fallback: No game_state, execute directly (backward compatibility)
+            keypress = data.get('keypress', '')
+            result = send_keypress(keypress, log_action)
+
+            if result['success']:
+                log_action(f"Game command: {command}", f"From {username} (keypress: {keypress})")
+            else:
+                log_action(f"Game command FAILED: {command}", f"From {username} - {result.get('error', 'Unknown error')}")
+
+    @socketio.on('get_game_state')
+    def handle_get_game_state():
+        """Handle request for current game state (for admin panel queries)."""
+        if game_state:
+            return game_state.get_state()
+        return {}
 
     return broadcast_states

@@ -86,7 +86,7 @@ class VoteManager:
 
         # Start timer on first K or L vote (X requires K/L to unlock)
         if not self.timer_started and vote in ['k', 'l']:
-            self._start_timer()
+            self._start_timer(username, vote)
 
         # Recalculate timer limit based on new ratios
         if self.timer_started:
@@ -164,12 +164,17 @@ class VoteManager:
 
         return counts
 
-    def _start_timer(self):
+    def _start_timer(self, username, vote):
         """
         Start the vote timer.
 
         Called when first K or L vote is cast.
         Records wall clock start time and calculates initial target duration.
+        Emits round_start event for chat announcement.
+
+        Args:
+            username: Username of voter who started the round
+            vote: Vote that started the round ('k' or 'l')
         """
         self.round_start_time = datetime.now()
         counts = self.get_vote_counts()
@@ -177,6 +182,14 @@ class VoteManager:
         self.time_remaining = self.timer_limit
         self.timer_started = True
         self.log_action("Timer started", f"{self.timer_limit}s target")
+
+        # Emit round_start event for chat announcement
+        self.socketio.emit('round_start', {
+            'username': username,
+            'vote': vote,
+            'timer_limit': self.timer_limit,
+            'timestamp': datetime.now().isoformat()
+        })
 
     def _update_timer_limit(self):
         """
@@ -306,8 +319,10 @@ class VoteManager:
 
         Called when timer expires.
         Determines winner, sends keypress if K or L, resets votes.
+        Emits round_end event for chat announcement.
         """
         winner = self.get_winner()
+        counts = self.get_vote_counts()
 
         if winner == 'k':
             self.log_action("Winner: K", "Sending Delete keypress")
@@ -328,6 +343,16 @@ class VoteManager:
             # X wins or tie
             self.log_action("Winner: X", "No action (extend)")
             print("→ No action (X wins)")
+
+        # Emit round_end event for chat announcement (before reset)
+        self.socketio.emit('round_end', {
+            'winner': winner,
+            'k_votes': counts['k'],
+            'l_votes': counts['l'],
+            'x_votes': counts['x'],
+            'first_l_claimant': self.first_l_claimant,
+            'timestamp': datetime.now().isoformat()
+        })
 
         # Reset for next round
         self.reset_votes()
