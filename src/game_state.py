@@ -316,29 +316,38 @@ class ZoomTracker:
         }
 
 
-class StatefulToggle:
+class InfoPanelGroup:
     """
-    Tracks boolean state with explicit commands (not toggle).
+    Tracks info panel selection with hide/show logic.
 
-    Example: UI visibility uses 'h' (hide) and 's' (show) - not a toggle.
-    Rejects commands that would put it in the same state it's already in.
+    Commands: 0 (hide all), 1-4 (show panel)
+    State: current (0-4), last_non_zero (1-4)
+
+    Logic:
+    - 0: If not hidden, send 'h', set current=0
+    - 1-4:
+      - If hidden: send 'h', then send number only if ≠ last_non_zero
+      - If visible: send number only if ≠ current
+      - Update current and last_non_zero
+
+    Cooldown: Shared across entire group (0-4)
     """
 
-    def __init__(self, name, cooldown_seconds, initial_state=False):
+    def __init__(self, name, cooldown_seconds):
         """
-        Initialize stateful toggle.
+        Initialize info panel group.
 
         Args:
-            name: Display name for this toggle
-            cooldown_seconds: Seconds before next state change
-            initial_state: Initial boolean value (False = visible, True = hidden)
+            name: Display name for this group
+            cooldown_seconds: Seconds before next command can execute
         """
         self.name = name
         self.cooldown = cooldown_seconds
 
-        # Current state
-        self.hidden = initial_state   # True = hidden, False = visible
-        self.previous = None          # Previous boolean state
+        # State tracking
+        self.current = None          # Current value (0-4), None = unknown/initial
+        self.last_non_zero = None    # Last selected panel (1-4)
+        self.previous = None         # Previous value
 
         # Execution metadata
         self.last_change = None
@@ -349,34 +358,25 @@ class StatefulToggle:
         self.rejected_count = 0
         self.last_rejected_user = None
 
-    def can_execute(self, target_hidden):
+    def can_execute(self):
         """
-        Check if state change is allowed.
-
-        Args:
-            target_hidden: Target boolean state (True = hide, False = show)
+        Check if group is off cooldown.
 
         Returns:
-            tuple: (can_execute: bool, reason: str or None)
+            bool: True if command can execute
         """
-        # Already in target state?
-        if self.hidden == target_hidden:
-            return False, 'already_in_state'
+        if not self.last_change:
+            return True
 
-        # On cooldown?
-        if self.last_change:
-            elapsed = (datetime.now() - self.last_change).total_seconds()
-            if elapsed < self.cooldown:
-                return False, 'cooldown'
-
-        return True, None
+        elapsed = (datetime.now() - self.last_change).total_seconds()
+        return elapsed >= self.cooldown
 
     def time_remaining(self):
         """
         Get seconds remaining on cooldown.
 
         Returns:
-            float: Seconds until next state change (0 if ready)
+            float: Seconds until next command can execute (0 if ready)
         """
         if not self.last_change:
             return 0.0
@@ -385,12 +385,12 @@ class StatefulToggle:
         remaining = self.cooldown - elapsed
         return max(0.0, remaining)
 
-    def execute(self, target_hidden, user, cause='chat'):
+    def execute(self, value, user, cause='chat'):
         """
-        Execute a state change.
+        Execute an info panel command (0-4).
 
         Args:
-            target_hidden: Target boolean state (True = hide, False = show)
+            value: Target value ('0'-'4')
             user: Username triggering the change
             cause: 'admin' or 'chat'
 
@@ -398,49 +398,114 @@ class StatefulToggle:
             dict: {
                 'accepted': bool,
                 'reason': str,
-                'keypress': str or None,
+                'keypress': str or list of str (for multi-step),
                 'cooldown_remaining': float
             }
         """
-        can, reason = self.can_execute(target_hidden)
-
-        if not can:
+        # Check cooldown
+        if not self.can_execute():
             self.rejected_count += 1
             self.last_rejected_user = user
             return {
                 'accepted': False,
-                'reason': reason,
+                'reason': 'cooldown',
                 'keypress': None,
                 'cooldown_remaining': self.time_remaining()
             }
 
-        # Accept the state change
-        self.previous = self.hidden
-        self.hidden = target_hidden
-        self.last_change = datetime.now()
-        self.last_user = user
-        self.last_cause = cause
-        self.rejected_count = 0
+        # Determine if currently hidden (current == 0 or current == '0')
+        is_hidden = (self.current == '0' or self.current == 0)
 
+        # Handle '0' command (hide UI)
+        if value == '0':
+            # Already hidden?
+            if is_hidden:
+                self.rejected_count += 1
+                self.last_rejected_user = user
+                return {
+                    'accepted': False,
+                    'reason': 'already_hidden',
+                    'keypress': None,
+                    'cooldown_remaining': 0.0
+                }
+
+            # Hide UI
+            self.previous = self.current
+            self.current = '0'
+            self.last_change = datetime.now()
+            self.last_user = user
+            self.last_cause = cause
+            self.rejected_count = 0
+
+            return {
+                'accepted': True,
+                'reason': 'executed',
+                'keypress': 'h',  # Send hide keypress
+                'cooldown_remaining': 0.0
+            }
+
+        # Handle 1-4 commands (show panel)
+        if value in ['1', '2', '3', '4']:
+            keypresses = []
+
+            # If hidden, need to show UI first
+            if is_hidden:
+                keypresses.append('h')  # Unhide
+
+                # Then send number only if different from last_non_zero
+                if value != self.last_non_zero:
+                    keypresses.append(value)
+            else:
+                # Already visible, send number only if different from current
+                if value == self.current:
+                    self.rejected_count += 1
+                    self.last_rejected_user = user
+                    return {
+                        'accepted': False,
+                        'reason': 'already_selected',
+                        'keypress': None,
+                        'cooldown_remaining': 0.0
+                    }
+
+                keypresses.append(value)
+
+            # Update state
+            self.previous = self.current
+            self.current = value
+            self.last_non_zero = value
+            self.last_change = datetime.now()
+            self.last_user = user
+            self.last_cause = cause
+            self.rejected_count = 0
+
+            # Return single keypress or list
+            return {
+                'accepted': True,
+                'reason': 'executed',
+                'keypress': keypresses[0] if len(keypresses) == 1 else keypresses,
+                'cooldown_remaining': 0.0
+            }
+
+        # Invalid value
         return {
-            'accepted': True,
-            'reason': 'executed',
-            'keypress': 'h',  # Game only has toggle - we send 'h' to toggle
+            'accepted': False,
+            'reason': 'invalid_value',
+            'keypress': None,
             'cooldown_remaining': 0.0
         }
 
     def get_state(self):
         """
-        Get current state of this toggle.
+        Get current state of info panel group.
 
         Returns:
             dict: State metadata for admin panel + overlay
         """
         return {
             'name': self.name,
-            'current': 'hidden' if self.hidden else 'visible',
-            'current_bool': self.hidden,
-            'previous': 'hidden' if self.previous else 'visible' if self.previous is not None else None,
+            'current': self.current,
+            'last_non_zero': self.last_non_zero,
+            'previous': self.previous,
             'last_user': self.last_user,
             'last_cause': self.last_cause,
             'last_change': self.last_change.isoformat() if self.last_change else None,
@@ -456,9 +521,8 @@ class GameState:
     Central tracker for all stateful game commands.
 
     Handles:
-    - Info panels (1/2/3/4) - 15s shared cooldown, rejects selecting current panel
+    - Info panels (0-4) - 15s shared cooldown, 0=hide, 1-4=show panel with smart state tracking
     - Zoom (+/-) - Dynamic cooldown (1-120s) based on distance from initial
-    - UI visibility (h/s) - 2s cooldown, explicit hide/show
 
     Self-regulating zoom system creates natural equilibrium at edge of chaos.
     """
@@ -472,21 +536,18 @@ class GameState:
         """
         self.socketio = socketio
 
-        # Command groups
-        self.info_panels = CommandGroup('info_panels', cooldown_seconds=15.0, reject_current=True)
+        # Info panels (0-4 with hide/show logic)
+        self.info_panels = InfoPanelGroup('info_panels', cooldown_seconds=15.0)
 
         # Zoom with distance-based dynamic cooldown
         self.zoom = ZoomTracker('zoom')
-
-        # Stateful toggles
-        self.ui = StatefulToggle('ui_visibility', cooldown_seconds=2.0, initial_state=False)
 
     def handle_command(self, command, user, cause='chat'):
         """
         Handle a game command with state tracking and cooldown enforcement.
 
         Args:
-            command: Command character ('+', '-', '1', '2', '3', '4', 'h', 's')
+            command: Command character ('+', '-', '0', '1', '2', '3', '4')
             user: Username executing the command
             cause: 'admin' or 'chat'
 
@@ -494,23 +555,17 @@ class GameState:
             dict: {
                 'accepted': bool,
                 'reason': str,
-                'keypress': str or None,
+                'keypress': str or list of str (multi-step),
                 'cooldown_remaining': float
             }
         """
-        # Info panel commands
-        if command in ['1', '2', '3', '4']:
+        # Info panel commands (0-4)
+        if command in ['0', '1', '2', '3', '4']:
             result = self.info_panels.execute(command, user, cause)
 
         # Zoom commands (direction-based with distance tracking)
         elif command in ['+', '-']:
             result = self.zoom.execute(command, user, cause)
-
-        # UI visibility commands (explicit hide/show)
-        elif command == 'h':  # Hide UI
-            result = self.ui.execute(target_hidden=True, user=user, cause=cause)
-        elif command == 's':  # Show UI
-            result = self.ui.execute(target_hidden=False, user=user, cause=cause)
 
         else:
             return {
@@ -536,7 +591,6 @@ class GameState:
         return {
             'info_panels': self.info_panels.get_state(),
             'zoom': self.zoom.get_state(),
-            'ui': self.ui.get_state(),
             'timestamp': datetime.now().isoformat()
         }
 

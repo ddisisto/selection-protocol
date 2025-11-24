@@ -225,7 +225,7 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
     @socketio.on('game_command')
     def handle_game_command(data):
         """
-        Handle game commands from Twitch chat (+/-/1/2/3/4/h/s).
+        Handle game commands from Twitch chat (+/-/0/1/2/3/4).
 
         Uses game_state for cooldown enforcement and state tracking.
         Sends structured accept/reject responses for overlay feedback.
@@ -242,14 +242,23 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
             result = game_state.handle_command(command, username, cause='chat')
 
             if result['accepted']:
-                # Execute the keypress
-                keypress = result['keypress']
-                exec_result = send_keypress(keypress, log_action)
+                # Execute the keypress(es) - may be single or multi-step
+                keypresses = result['keypress']
+                if not isinstance(keypresses, list):
+                    keypresses = [keypresses]
 
-                if exec_result['success']:
-                    log_action(f"Game command: {command}", f"From {username} (keypress: {keypress})")
-                else:
-                    log_action(f"Game command FAILED: {command}", f"From {username} - {exec_result.get('error', 'Unknown')}")
+                # Execute each keypress sequentially
+                all_success = True
+                for keypress in keypresses:
+                    exec_result = send_keypress(keypress, log_action)
+                    if not exec_result['success']:
+                        all_success = False
+                        log_action(f"Game command FAILED: {command}", f"From {username} - {exec_result.get('error', 'Unknown')}")
+                        break
+
+                if all_success:
+                    keypress_str = ', '.join(keypresses) if len(keypresses) > 1 else keypresses[0]
+                    log_action(f"Game command: {command}", f"From {username} (keypress: {keypress_str})")
             else:
                 # Command rejected (cooldown or already in state)
                 reason = result['reason']
@@ -261,6 +270,8 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
                     log_action(f"Game command REJECTED: {command}", f"From {username} - already in target state")
                 elif reason == 'already_selected':
                     log_action(f"Game command REJECTED: {command}", f"From {username} - panel already selected")
+                elif reason == 'already_hidden':
+                    log_action(f"Game command REJECTED: {command}", f"From {username} - UI already hidden")
                 elif reason == 'limit_reached':
                     log_action(f"Game command REJECTED: {command}", f"From {username} - zoom limit reached")
                 else:

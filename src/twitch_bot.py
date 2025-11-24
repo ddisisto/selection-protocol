@@ -260,7 +260,7 @@ class SelectionBot(commands.AutoBot):
         print(f"Connected at: {self.start_time.strftime('%H:%M:%S')}")
         print(f"\nListening for:")
         print(f"  Votes: k (kill), l (lay), x (extend)")
-        print(f"  Commands: +/- (zoom), 1/2/3/4 (info panels), h/s (hide/show UI)")
+        print(f"  Commands: +/- (zoom), 0-4 (info panels, 0=hide)")
         print(f"{'='*60}\n")
 
         # Subscribe to chat messages for our channel
@@ -390,7 +390,7 @@ class SelectionBot(commands.AutoBot):
         # Wait a moment for EventSub to be fully ready
         await asyncio.sleep(2)
 
-        message = "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 1/2/3/4 (info) | h/s (hide/show UI)"
+        message = "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 0-4 (info panels, 0=hide)"
         success = await self._send_chat_message(message)
 
         if success:

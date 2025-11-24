@@ -32,7 +32,14 @@ GAME_COMMANDS = {
         'enabled': True
     },
 
-    # Info panel selection
+    # Info panel selection (0 = hide all, 1-4 = show panel)
+    '0': {
+        'name': 'Hide UI',
+        'description': 'Hide all info panels',
+        'keypress': 'h',
+        'category': 'ui',
+        'enabled': True
+    },
     '1': {
         'name': 'Info Panel 1',
         'description': 'Display info panel 1',
@@ -58,22 +65,6 @@ GAME_COMMANDS = {
         'name': 'Info Panel 4',
         'description': 'Display info panel 4',
         'keypress': '4',
-        'category': 'ui',
-        'enabled': True
-    },
-
-    # UI visibility (explicit commands, not toggle)
-    'h': {
-        'name': 'Hide UI',
-        'description': 'Hide UI for clean view',
-        'keypress': 'h',
-        'category': 'ui',
-        'enabled': True
-    },
-    's': {
-        'name': 'Show UI',
-        'description': 'Show UI (make visible)',
-        'keypress': 'h',  # Game only has toggle, but we track state
         'category': 'ui',
         'enabled': True
     }
