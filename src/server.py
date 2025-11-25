@@ -17,7 +17,7 @@ from datetime import datetime
 from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
 from .game_state import GameState
-from .game_controller import discover_game_window, set_game_window_id
+from .game_controller import discover_game_window, set_game_window_id, send_keypress
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -107,18 +107,6 @@ def overlay():
 
 # Bot integration endpoints
 
-@socketio.on('get_actions')
-def handle_get_actions():
-    """
-    Return list of enabled action codes for bot.
-
-    Bot calls this on startup to know which commands to accept.
-    """
-    actions = vote_manager.get_enabled_actions()
-    print(f"Bot requested actions: {actions}")
-    return actions
-
-
 @socketio.on('bot_connected')
 def handle_bot_connected(data):
     """
@@ -134,20 +122,23 @@ def handle_bot_connected(data):
     log_action("Twitch bot connected", f"@{bot_username}")
     print(f"\n{'='*60}")
     print(f"✓ Twitch bot connected: @{bot_username}")
-    print(f"  Ready to receive votes from chat")
+    print(f"  Ready to receive chat input from viewers")
     print(f"{'='*60}\n")
 
 
-@socketio.on('vote_cast')
-def handle_vote_cast(data):
+@socketio.on('chat_input')
+def handle_chat_input(data):
     """
-    Handle vote from Twitch bot.
+    Route single-char chat input to appropriate handler (unified interface).
 
     Args:
-        data: {username: str, vote: str, timestamp: str}
+        data: {username: str, input: str, timestamp: str}
+
+    Returns:
+        {accepted: bool, type: str, reason: str, ...}
     """
     username = data.get('username')
-    vote = data.get('vote')
+    chat_input = data.get('input')
     timestamp_str = data.get('timestamp')
 
     # Parse timestamp if provided
@@ -158,20 +149,46 @@ def handle_vote_cast(data):
         except (ValueError, TypeError):
             timestamp = datetime.now()
 
-    # Record vote
-    success = vote_manager.cast_vote(username, vote, timestamp)
+    # Route to vote manager (k/l/x)
+    if chat_input in vote_manager.get_enabled_actions():
+        success = vote_manager.cast_vote(username, chat_input, timestamp)
+        return {
+            'accepted': success,
+            'type': 'vote',
+            'input': chat_input
+        }
 
-    if success:
-        print(f"Vote recorded: {username} → {vote.upper()}")
-    else:
-        # Check if user already has this vote (duplicate)
-        current_vote = vote_manager.votes.get(username, {}).get('vote')
-        if current_vote == vote:
-            print(f"Duplicate vote ignored: {username} → {vote.upper()} (already voted {vote.upper()})")
-        else:
-            print(f"Invalid vote ignored: {username} → {vote}")
+    # Route to game state (+/-/0-4)
+    if chat_input in ['+', '-', '0', '1', '2', '3', '4']:
+        result = game_state.handle_command(chat_input, username, cause='chat')
 
-    return {'success': success}
+        # Execute keypress(es) if command was accepted
+        if result['accepted']:
+            keypresses = result['keypress']
+            if not isinstance(keypresses, list):
+                keypresses = [keypresses]
+
+            # Send each keypress sequentially (for multi-step commands)
+            for keypress in keypresses:
+                exec_result = send_keypress(keypress, log_action)
+                if not exec_result['success']:
+                    log_action(f"Game command FAILED: {chat_input}", f"From {username} - {exec_result.get('error', 'Unknown')}")
+
+        return {
+            'accepted': result['accepted'],
+            'type': 'command',
+            'reason': result.get('reason', 'executed' if result['accepted'] else 'rejected'),
+            'cooldown_remaining': result.get('cooldown_remaining', 0)
+        }
+
+    # Invalid input
+    return {
+        'accepted': False,
+        'type': 'invalid',
+        'reason': 'unknown_input'
+    }
+
+
 
 
 if __name__ == '__main__':
