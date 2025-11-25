@@ -59,9 +59,8 @@ vote_manager = VoteManager(socketio, log_action)
 # Initialize game state (owns command state, cooldowns, tracking)
 game_state = GameState(socketio)
 
-# Setup WebSocket handlers (legacy vote_state for backward compat with admin panel)
-vote_state = {}  # Deprecated - vote_manager owns state now
-broadcast_states = setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager, game_state)
+# Setup WebSocket handlers
+broadcast_states = setup_socketio_handlers(socketio, admin_state, log_action, vote_manager, game_state)
 
 
 # Background timer task

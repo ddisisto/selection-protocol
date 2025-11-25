@@ -11,16 +11,15 @@ from flask_socketio import emit
 from .game_controller import send_keypress
 
 
-def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_manager=None, game_state=None):
+def setup_socketio_handlers(socketio, admin_state, log_action, vote_manager=None, game_state=None):
     """
     Register all SocketIO event handlers.
 
     Args:
         socketio: Flask-SocketIO instance
-        vote_state: Global vote state dictionary (deprecated)
         admin_state: Global admin state dictionary
         log_action: Logging function for admin actions
-        vote_manager: VoteManager instance (new, replaces vote_state)
+        vote_manager: VoteManager instance for vote tracking
         game_state: GameState instance for command tracking and cooldowns
     """
 
@@ -50,61 +49,6 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
         print(f"Client disconnected from overlay (remaining: {admin_state['connected_clients']})")
         log_action("Client disconnected", f"Remaining: {admin_state['connected_clients']}")
 
-    @socketio.on('admin_add_k')
-    def handle_admin_add_k():
-        """Handle admin K +1 button."""
-        vote_state['k_votes'] += 1
-        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
-        log_action("K +1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
-        broadcast_states()
-
-    @socketio.on('admin_sub_k')
-    def handle_admin_sub_k():
-        """Handle admin K -1 button."""
-        if vote_state['k_votes'] > 0:
-            vote_state['k_votes'] -= 1
-            vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
-            log_action("K -1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
-            broadcast_states()
-
-    @socketio.on('admin_add_l')
-    def handle_admin_add_l():
-        """Handle admin L +1 button."""
-        vote_state['l_votes'] += 1
-        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
-        log_action("L +1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
-        broadcast_states()
-
-    @socketio.on('admin_sub_l')
-    def handle_admin_sub_l():
-        """Handle admin L -1 button."""
-        if vote_state['l_votes'] > 0:
-            vote_state['l_votes'] -= 1
-            vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
-            log_action("L -1", f"K={vote_state['k_votes']}, L={vote_state['l_votes']}")
-            broadcast_states()
-
-    @socketio.on('admin_reset')
-    def handle_admin_reset():
-        """Handle admin reset button."""
-        vote_state['k_votes'] = 0
-        vote_state['l_votes'] = 0
-        vote_state['total_votes'] = 0
-        log_action("Reset votes", "K=0, L=0")
-        broadcast_states()
-
-    @socketio.on('admin_random_vote')
-    def handle_admin_random_vote():
-        """Handle admin random vote button."""
-        import random
-        if random.random() < 0.5:
-            vote_state['k_votes'] += 1
-            log_action("Random vote", "Added K")
-        else:
-            vote_state['l_votes'] += 1
-            log_action("Random vote", "Added L")
-        vote_state['total_votes'] = vote_state['k_votes'] + vote_state['l_votes']
-        broadcast_states()
 
     @socketio.on('admin_send_keypress')
     def handle_admin_send_keypress(data):
@@ -129,63 +73,8 @@ def setup_socketio_handlers(socketio, vote_state, admin_state, log_action, vote_
         # Broadcast updated states
         broadcast_states()
 
-    @socketio.on('admin_pause_timer')
-    def handle_admin_pause_timer():
-        """Handle admin pause timer button."""
-        vote_state['timer_paused'] = True
-        log_action("Timer paused")
-        broadcast_states()
-
-    @socketio.on('admin_resume_timer')
-    def handle_admin_resume_timer():
-        """Handle admin resume timer button."""
-        vote_state['timer_paused'] = False
-        log_action("Timer resumed")
-        broadcast_states()
-
-    @socketio.on('admin_trigger_now')
-    def handle_admin_trigger_now():
-        """Handle admin trigger now button."""
-        # Determine winner
-        if vote_state['k_votes'] > vote_state['l_votes']:
-            winner = 'K (Kill)'
-            send_keypress('Delete', log_action)
-        elif vote_state['l_votes'] > vote_state['k_votes']:
-            winner = 'L (Lay)'
-            send_keypress('Insert', log_action)
-        else:
-            winner = 'Tie - no action'
-
-        log_action("Triggered manually", f"Winner: {winner}")
-        # Reset votes after triggering
-        vote_state['k_votes'] = 0
-        vote_state['l_votes'] = 0
-        vote_state['total_votes'] = 0
-        vote_state['time_remaining'] = admin_state['timer_duration']
-        broadcast_states()
-
-    @socketio.on('admin_reset_timer')
-    def handle_admin_reset_timer(data):
-        """Handle admin reset timer button."""
-        duration = data.get('duration', 30)
-        admin_state['timer_duration'] = duration
-        vote_state['time_remaining'] = duration
-        log_action("Timer reset", f"{duration}s")
-        broadcast_states()
-
-    @socketio.on('admin_toggle_setting')
-    def handle_admin_toggle_setting(data):
-        """Handle admin automation setting toggles."""
-        setting = data.get('setting')
-        value = data.get('value', False)
-
-        if setting in admin_state:
-            admin_state[setting] = value
-            log_action(f"Setting: {setting}", f"{'Enabled' if value else 'Disabled'}")
-            broadcast_states()
-
     # ============================================================
-    # NEW ADMIN TESTING HANDLERS (vote_manager-based)
+    # ADMIN TESTING HANDLERS (vote_manager-based)
     # ============================================================
 
     @socketio.on('admin_add_vote')

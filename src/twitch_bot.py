@@ -13,7 +13,6 @@ from twitchio.ext import commands
 from twitchio import eventsub, eventsub_
 from datetime import datetime
 import sys
-from .game_commands import is_valid_command, get_keypress_for_command
 
 
 def parse_first_word(message):
@@ -422,23 +421,19 @@ class SelectionBot(commands.AutoBot):
             except Exception as e:
                 print(f"  ⚠ Failed to send vote to Flask: {e}")
 
-        # Check if message is a valid game command (+/-/1/2/3/4/h/s)
-        elif is_valid_command(command):
+        # Check if message is a potential game command (any single character)
+        # Server validates, determines keypress, and responds with accept/reject
+        elif len(command) == 1:
             self.game_commands_received += 1
 
-            # Get the keypress to send
-            keypress = get_keypress_for_command(command)
-
             # Log command (highlighted)
-            print(f"  → COMMAND: {command} (keypress: {keypress})")
+            print(f"  → COMMAND: {command}")
 
-            # Send command to Flask via SocketIO
-            # NOTE: No rate limiting yet - add per-user cooldowns before live deployment
+            # Send command to Flask via SocketIO (server validates and executes)
             try:
                 await self.sio.emit('game_command', {
                     'username': username,
                     'command': command,
-                    'keypress': keypress,
                     'timestamp': datetime.now().isoformat()
                 })
             except Exception as e:

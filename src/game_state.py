@@ -8,144 +8,92 @@ Provides structured accept/reject responses for overlay feedback.
 from datetime import datetime
 
 
-class CommandGroup:
+class CommandBase:
     """
-    Tracks a group of related commands with shared global cooldown.
+    Base class for command trackers with shared metadata and rejection tracking.
 
-    Example: Info panels (1/2/3/4) share 15s cooldown - only one can change every 15s.
-    First-in-wins after cooldown expires.
-    Rejects selecting the current panel (prevents unwanted toggle).
+    Subclasses implement:
+    - can_execute() - Validation logic
+    - time_remaining() - Cooldown calculation
+    - execute() - Command execution (can use _record_execution() and _record_rejection())
+    - get_state() - Extend _get_base_metadata() with command-specific state
     """
 
-    def __init__(self, name, cooldown_seconds, reject_current=False):
+    def __init__(self, name):
         """
-        Initialize command group.
+        Initialize base command tracker.
 
         Args:
-            name: Display name for this group
-            cooldown_seconds: Seconds before next command in group can execute
-            reject_current: If True, reject commands that select current value
+            name: Display name for this command/group
         """
         self.name = name
-        self.cooldown = cooldown_seconds
-        self.reject_current = reject_current
 
-        # Current state
-        self.current = None           # Current value (e.g., '2' for info panel 2)
-        self.previous = None          # Previous value
-
-        # Execution metadata
+        # Execution metadata (shared across all commands)
         self.last_change = None       # datetime of last successful change
         self.last_user = None         # Username who triggered last change
         self.last_cause = None        # 'admin' or 'chat'
 
-        # Rejection tracking
+        # Rejection tracking (shared across all commands)
         self.rejected_count = 0       # Count since last successful change
         self.last_rejected_user = None
 
-    def can_execute(self):
+    def _record_execution(self, user, cause='chat'):
         """
-        Check if group is off cooldown.
-
-        Returns:
-            bool: True if command can execute
-        """
-        if not self.last_change:
-            return True
-
-        elapsed = (datetime.now() - self.last_change).total_seconds()
-        return elapsed >= self.cooldown
-
-    def time_remaining(self):
-        """
-        Get seconds remaining on cooldown.
-
-        Returns:
-            float: Seconds until next command can execute (0 if ready)
-        """
-        if not self.last_change:
-            return 0.0
-
-        elapsed = (datetime.now() - self.last_change).total_seconds()
-        remaining = self.cooldown - elapsed
-        return max(0.0, remaining)
-
-    def execute(self, value, user, cause='chat'):
-        """
-        Execute a command in this group.
+        Record successful execution metadata.
 
         Args:
-            value: New value (e.g., '2' for info panel 2)
             user: Username triggering the change
             cause: 'admin' or 'chat'
-
-        Returns:
-            dict: {
-                'accepted': bool,
-                'reason': str,
-                'keypress': str or None,
-                'cooldown_remaining': float
-            }
         """
-        # Check if selecting current value (unwanted toggle)
-        if self.reject_current and self.current == value:
-            self.rejected_count += 1
-            self.last_rejected_user = user
-            return {
-                'accepted': False,
-                'reason': 'already_selected',
-                'keypress': None,
-                'cooldown_remaining': 0.0
-            }
-
-        # Check cooldown
-        if not self.can_execute():
-            self.rejected_count += 1
-            self.last_rejected_user = user
-            return {
-                'accepted': False,
-                'reason': 'cooldown',
-                'keypress': None,
-                'cooldown_remaining': self.time_remaining()
-            }
-
-        # Accept the command
-        self.previous = self.current
-        self.current = value
         self.last_change = datetime.now()
         self.last_user = user
         self.last_cause = cause
         self.rejected_count = 0  # Reset on successful execution
 
-        return {
-            'accepted': True,
-            'reason': 'executed',
-            'keypress': value,
-            'cooldown_remaining': 0.0
-        }
-
-    def get_state(self):
+    def _record_rejection(self, user):
         """
-        Get current state of this command group.
+        Record rejection metadata.
+
+        Args:
+            user: Username whose command was rejected
+        """
+        self.rejected_count += 1
+        self.last_rejected_user = user
+
+    def _get_base_metadata(self):
+        """
+        Get base metadata dict for get_state().
 
         Returns:
-            dict: State metadata for admin panel + overlay
+            dict: Base metadata (name, timing, rejection counts)
         """
         return {
             'name': self.name,
-            'current': self.current,
-            'previous': self.previous,
             'last_user': self.last_user,
             'last_cause': self.last_cause,
             'last_change': self.last_change.isoformat() if self.last_change else None,
             'rejected_count': self.rejected_count,
-            'last_rejected_user': self.last_rejected_user,
-            'cooldown': self.cooldown,
-            'cooldown_remaining': self.time_remaining()
+            'last_rejected_user': self.last_rejected_user
         }
 
+    def can_execute(self, *args, **kwargs):
+        """Subclass must implement validation logic."""
+        raise NotImplementedError
 
-class ZoomTracker:
+    def time_remaining(self, *args, **kwargs):
+        """Subclass must implement cooldown calculation."""
+        raise NotImplementedError
+
+    def execute(self, *args, **kwargs):
+        """Subclass must implement command execution."""
+        raise NotImplementedError
+
+    def get_state(self):
+        """Subclass must implement state retrieval."""
+        raise NotImplementedError
+
+
+class ZoomTracker(CommandBase):
     """
     Tracks zoom level with distance-based dynamic cooldown.
 
@@ -166,7 +114,7 @@ class ZoomTracker:
         Args:
             name: Display name for this tracker
         """
-        self.name = name
+        super().__init__(name)
 
         # Distance tracking
         self.distance_from_initial = 0  # -15 to +15
@@ -180,16 +128,7 @@ class ZoomTracker:
 
         # Current state
         self.previous_distance = None
-
-        # Execution metadata
-        self.last_change = None
-        self.last_user = None
-        self.last_cause = None
         self.last_direction = None  # Track last direction for cooldown
-
-        # Rejection tracking
-        self.rejected_count = 0
-        self.last_rejected_user = None
 
     def get_dynamic_cooldown(self, direction):
         """
@@ -290,8 +229,7 @@ class ZoomTracker:
         can, reason = self.can_execute(direction)
 
         if not can:
-            self.rejected_count += 1
-            self.last_rejected_user = user
+            self._record_rejection(user)
             return {
                 'accepted': False,
                 'reason': reason,
@@ -310,11 +248,8 @@ class ZoomTracker:
             keypress = 'KP_Subtract'
 
         # Record execution
-        self.last_change = datetime.now()
-        self.last_user = user
-        self.last_cause = cause
+        self._record_execution(user, cause)
         self.last_direction = direction  # Track direction for next cooldown check
-        self.rejected_count = 0
 
         # Log zoom change with cooldown info
         cooldown_in = self.get_dynamic_cooldown('+')
@@ -338,25 +273,21 @@ class ZoomTracker:
         Returns:
             dict: State metadata for admin panel + overlay
         """
-        return {
-            'name': self.name,
+        state = self._get_base_metadata()
+        state.update({
             'distance': self.distance_from_initial,
             'previous_distance': self.previous_distance,
             'min_distance': self.min_distance,
             'max_distance': self.max_distance,
-            'last_user': self.last_user,
-            'last_cause': self.last_cause,
             'last_direction': self.last_direction,
-            'last_change': self.last_change.isoformat() if self.last_change else None,
-            'rejected_count': self.rejected_count,
-            'last_rejected_user': self.last_rejected_user,
             'cooldown_in': self.get_dynamic_cooldown('+'),  # Zoom in cooldown
             'cooldown_out': self.get_dynamic_cooldown('-'),  # Zoom out cooldown
             'cooldown_remaining': self.time_remaining()
-        }
+        })
+        return state
 
 
-class InfoPanelGroup:
+class InfoPanelGroup(CommandBase):
     """
     Tracks info panel selection with hide/show logic.
 
@@ -381,22 +312,13 @@ class InfoPanelGroup:
             name: Display name for this group
             cooldown_seconds: Seconds before next command can execute
         """
-        self.name = name
+        super().__init__(name)
         self.cooldown = cooldown_seconds
 
         # State tracking
         self.current = None          # Current value (0-4), None = unknown/initial
         self.last_non_zero = None    # Last selected panel (1-4)
         self.previous = None         # Previous value
-
-        # Execution metadata
-        self.last_change = None
-        self.last_user = None
-        self.last_cause = None
-
-        # Rejection tracking
-        self.rejected_count = 0
-        self.last_rejected_user = None
 
     def can_execute(self):
         """
@@ -444,8 +366,7 @@ class InfoPanelGroup:
         """
         # Check cooldown
         if not self.can_execute():
-            self.rejected_count += 1
-            self.last_rejected_user = user
+            self._record_rejection(user)
             return {
                 'accepted': False,
                 'reason': 'cooldown',
@@ -460,8 +381,7 @@ class InfoPanelGroup:
         if value == '0':
             # Already hidden?
             if is_hidden:
-                self.rejected_count += 1
-                self.last_rejected_user = user
+                self._record_rejection(user)
                 return {
                     'accepted': False,
                     'reason': 'already_hidden',
@@ -472,10 +392,7 @@ class InfoPanelGroup:
             # Hide UI
             self.previous = self.current
             self.current = '0'
-            self.last_change = datetime.now()
-            self.last_user = user
-            self.last_cause = cause
-            self.rejected_count = 0
+            self._record_execution(user, cause)
 
             return {
                 'accepted': True,
@@ -498,8 +415,7 @@ class InfoPanelGroup:
             else:
                 # Already visible, send number only if different from current
                 if value == self.current:
-                    self.rejected_count += 1
-                    self.last_rejected_user = user
+                    self._record_rejection(user)
                     return {
                         'accepted': False,
                         'reason': 'already_selected',
@@ -513,10 +429,7 @@ class InfoPanelGroup:
             self.previous = self.current
             self.current = value
             self.last_non_zero = value
-            self.last_change = datetime.now()
-            self.last_user = user
-            self.last_cause = cause
-            self.rejected_count = 0
+            self._record_execution(user, cause)
 
             # Return single keypress or list
             return {
@@ -541,19 +454,15 @@ class InfoPanelGroup:
         Returns:
             dict: State metadata for admin panel + overlay
         """
-        return {
-            'name': self.name,
+        state = self._get_base_metadata()
+        state.update({
             'current': self.current,
             'last_non_zero': self.last_non_zero,
             'previous': self.previous,
-            'last_user': self.last_user,
-            'last_cause': self.last_cause,
-            'last_change': self.last_change.isoformat() if self.last_change else None,
-            'rejected_count': self.rejected_count,
-            'last_rejected_user': self.last_rejected_user,
             'cooldown': self.cooldown,
             'cooldown_remaining': self.time_remaining()
-        }
+        })
+        return state
 
 
 class GameState:

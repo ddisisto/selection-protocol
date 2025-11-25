@@ -12,15 +12,6 @@ twitch:
   channel: "your_channel_name"
   nick: "your_channel_name"
 
-voting:
-  # Vote cycle duration in seconds
-  cycle_duration: 60
-
-  # Tie-break window duration in seconds
-  tiebreak_duration: 10
-
-  # Allow users to change votes during voting window
-  allow_vote_changes: true
-
-  # Default action when no votes (k/l/x)
-  default_on_empty: "x"
+game:
+  # Window title for auto-discovery (xdotool search --name)
+  window_title: "The Bibites"

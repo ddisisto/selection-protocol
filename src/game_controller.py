@@ -6,6 +6,8 @@ Handles window focus and keypress automation for game control.
 
 import subprocess
 import time
+import yaml
+from pathlib import Path
 
 # Global window ID (discovered at runtime)
 _GAME_WINDOW_ID = None
@@ -15,7 +17,7 @@ def discover_game_window():
     """
     Auto-discover The Bibites window ID.
 
-    Searches for window with name "The Bibites".
+    Reads window title from config.yaml and searches for matching window.
     Fails fast if not found or multiple windows exist.
 
     Returns:
@@ -24,9 +26,23 @@ def discover_game_window():
     Raises:
         RuntimeError: If window not found or multiple windows found
     """
+    # Load window title from config
+    config_path = Path(__file__).parent.parent / 'config.yaml'
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        window_title = config['game']['window_title']
+    except FileNotFoundError:
+        raise RuntimeError(
+            f"Config file not found: {config_path}\n"
+            "Copy config.yaml.example to config.yaml and configure it."
+        )
+    except KeyError as e:
+        raise RuntimeError(f"Missing config key: {e}")
+
     try:
         result = subprocess.run(
-            ['xdotool', 'search', '--name', 'The Bibites'],
+            ['xdotool', 'search', '--name', window_title],
             capture_output=True,
             text=True,
             check=True
@@ -37,13 +53,13 @@ def discover_game_window():
 
         if len(window_ids) == 0:
             raise RuntimeError(
-                "The Bibites window not found. "
+                f"Game window not found: '{window_title}'\n"
                 "Please ensure the game is running before starting the server."
             )
 
         if len(window_ids) > 1:
             raise RuntimeError(
-                f"Multiple Bibites windows found ({len(window_ids)}). "
+                f"Multiple game windows found ({len(window_ids)}). "
                 f"Please close duplicate windows. IDs: {', '.join(window_ids)}"
             )
 
