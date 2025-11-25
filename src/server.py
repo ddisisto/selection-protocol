@@ -17,7 +17,7 @@ from datetime import datetime
 from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
 from .game_state import GameState
-from .game_controller import discover_game_window, set_game_window_id
+from .game_controller import discover_game_window, set_game_window_id, send_keypress
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -161,6 +161,19 @@ def handle_chat_input(data):
     # Route to game state (+/-/0-4)
     if chat_input in ['+', '-', '0', '1', '2', '3', '4']:
         result = game_state.handle_command(chat_input, username, cause='chat')
+
+        # Execute keypress(es) if command was accepted
+        if result['accepted']:
+            keypresses = result['keypress']
+            if not isinstance(keypresses, list):
+                keypresses = [keypresses]
+
+            # Send each keypress sequentially (for multi-step commands)
+            for keypress in keypresses:
+                exec_result = send_keypress(keypress, log_action)
+                if not exec_result['success']:
+                    log_action(f"Game command FAILED: {chat_input}", f"From {username} - {exec_result.get('error', 'Unknown')}")
+
         return {
             'accepted': result['accepted'],
             'type': 'command',
