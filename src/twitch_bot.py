@@ -15,7 +15,7 @@ from datetime import datetime
 import sys
 
 
-def parse_first_word(message):
+def parse_chat_input(message):
     """
     Parse first word from message following CHAT_UX.md spec.
 
@@ -63,6 +63,40 @@ def parse_first_word(message):
     return None
 
 
+def log_chat_input(username, raw_message, parsed_input, response):
+    """
+    Log single consolidated line showing chat input processing result.
+
+    Format: [HH:MM:SS] username: "raw_message" → parsed (type:X, accepted:Y, ...)
+
+    Args:
+        username: Twitch username
+        raw_message: Raw chat message
+        parsed_input: Parsed single char or None
+        response: Server response dict with type, accepted, reason, etc.
+    """
+    timestamp = datetime.now().strftime('%H:%M:%S')
+
+    if parsed_input is None:
+        # Not a command, don't log (too verbose)
+        return
+
+    # Build response details
+    type_str = response.get('type', 'unknown')
+    accepted = response.get('accepted', False)
+    reason = response.get('reason', '')
+    cooldown = response.get('cooldown_remaining', 0)
+
+    # Format: [12:34:56] alice: "k boring" → k (type:vote, accepted:true)
+    details = f"type:{type_str}, accepted:{accepted}"
+    if reason:
+        details += f", reason:{reason}"
+    if cooldown > 0:
+        details += f", remaining:{cooldown:.1f}s"
+
+    print(f'[{timestamp}] {username}: "{raw_message}" → {parsed_input} ({details})')
+
+
 class SelectionBot(commands.AutoBot):
     """
     Twitch EventSub bot for parsing vote commands (k/l/x) from chat.
@@ -98,7 +132,6 @@ class SelectionBot(commands.AutoBot):
         )
         self.channel_id = channel_id
         self.start_time = datetime.now()
-        self.votes_received = 0
         self.messages_received = 0
         # Store for chat message sending and filtering
         self._client_id = client_id
@@ -108,8 +141,6 @@ class SelectionBot(commands.AutoBot):
 
         # SocketIO client (will be initialized in connect_to_flask)
         self.sio = None
-        self.valid_actions = set()
-        self.game_commands_received = 0
 
     def _validate_token(self):
         """
@@ -181,7 +212,7 @@ class SelectionBot(commands.AutoBot):
 
     async def connect_to_flask(self):
         """
-        Connect to Flask server via SocketIO and fetch enabled actions.
+        Connect to Flask server via SocketIO.
 
         This MUST succeed before connecting to Twitch.
         Exits immediately if connection fails.
@@ -198,12 +229,6 @@ class SelectionBot(commands.AutoBot):
             print(f"Connecting to {self._flask_url}...")
             await self.sio.connect(self._flask_url)
             print("✓ Connected to Flask server")
-
-            # Fetch enabled actions
-            print("Fetching enabled actions...")
-            actions = await self.sio.call('get_actions', timeout=5)
-            self.valid_actions = set(actions)
-            print(f"✓ Loaded {len(self.valid_actions)} valid actions: {sorted(self.valid_actions)}")
 
             # Register event handlers for vote_manager events
             self._register_vote_events()
@@ -382,8 +407,6 @@ class SelectionBot(commands.AutoBot):
         Args:
             payload: EventSub ChatMessage payload with chatter info and text
         """
-        timestamp = datetime.now().strftime('%H:%M:%S')
-
         # Extract username and message text from EventSub payload
         username = payload.chatter.name
         text = payload.text
@@ -394,50 +417,28 @@ class SelectionBot(commands.AutoBot):
 
         self.messages_received += 1
 
-        # Log ALL chat messages
-        print(f"[{timestamp}] {username}: {text}")
+        # Parse chat input (CHAT_UX.md spec)
+        parsed_input = parse_chat_input(text)
 
-        # Parse first word from message (CHAT_UX.md spec)
-        command = parse_first_word(text)
-
-        # Skip if no valid command parsed
-        if not command:
+        # Skip if no valid input parsed
+        if not parsed_input:
             return
 
-        # Check if message is a valid vote command (k/l/x)
-        if command in self.valid_actions:
-            self.votes_received += 1
+        # Forward to server via unified chat_input event
+        try:
+            response = await self.sio.call('chat_input', {
+                'username': username,
+                'input': parsed_input,
+                'timestamp': datetime.now().isoformat()
+            }, timeout=5)
 
-            # Log vote (highlighted)
-            print(f"  → VOTE: {command.upper()}")
+            # Log single consolidated line with server response
+            log_chat_input(username, text, parsed_input, response)
 
-            # Send vote to Flask via SocketIO
-            try:
-                await self.sio.emit('vote_cast', {
-                    'username': username,
-                    'vote': command,
-                    'timestamp': datetime.now().isoformat()
-                })
-            except Exception as e:
-                print(f"  ⚠ Failed to send vote to Flask: {e}")
-
-        # Check if message is a potential game command (any single character)
-        # Server validates, determines keypress, and responds with accept/reject
-        elif len(command) == 1:
-            self.game_commands_received += 1
-
-            # Log command (highlighted)
-            print(f"  → COMMAND: {command}")
-
-            # Send command to Flask via SocketIO (server validates and executes)
-            try:
-                await self.sio.emit('game_command', {
-                    'username': username,
-                    'command': command,
-                    'timestamp': datetime.now().isoformat()
-                })
-            except Exception as e:
-                print(f"  ⚠ Failed to send game command to Flask: {e}")
+        except Exception as e:
+            # Fail-fast: let exceptions surface
+            print(f"[ERROR] Failed to send chat_input: {e}")
+            raise
 
     async def event_error(self, error, data=None):
         """Handle bot errors - print details and crash."""
@@ -493,7 +494,7 @@ class SelectionBot(commands.AutoBot):
         while True:
             await asyncio.sleep(10)
             uptime = (datetime.now() - self.start_time).seconds
-            print(f"[Heartbeat] Uptime: {uptime}s | Messages: {self.messages_received} | Votes: {self.votes_received} | Commands: {self.game_commands_received}")
+            print(f"[Heartbeat] Uptime: {uptime}s | Messages: {self.messages_received}")
 
     @commands.command(name='lineage')
     async def lineage_command(self, ctx):
