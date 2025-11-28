@@ -8,7 +8,7 @@ and broadcasts state updates to overlay via SocketIO.
 from datetime import datetime
 from math import log2
 from .actions import ACTIONS, is_valid_action
-from .game_controller import send_keypress
+from .game_controller import send_keypress, apply_lineage_tag, TagVerificationError
 
 
 class VoteManager:
@@ -22,15 +22,17 @@ class VoteManager:
     - Switching back to L = new timestamp (back of queue)
     """
 
-    def __init__(self, socketio, log_action=None):
+    def __init__(self, socketio, game_state=None, log_action=None):
         """
         Initialize vote manager.
 
         Args:
             socketio: Flask-SocketIO instance for broadcasting
+            game_state: GameState instance (for lineage tagging context)
             log_action: Optional logging function for admin panel
         """
         self.socketio = socketio
+        self.game_state = game_state
         self.log_action = log_action or (lambda *args: None)
 
         # Vote tracking
@@ -335,14 +337,37 @@ class VoteManager:
                 print("✓ EXECUTED: Delete keypress (K wins)")
             else:
                 print(f"✗ FAILED: Delete keypress - {result.get('error', 'Unknown error')}")
+            send_keypress('ctrl+r', self.log_action)
         elif winner == 'l':
             claimant = self.first_l_claimant or "Unknown"
+
+            # TODO: Refactor all game actions through game_controller pattern
+            # For now, lineage tagging uses new context manager pattern
+            if claimant and self.game_state:
+                try:
+                    apply_lineage_tag(
+                        username=claimant,
+                        game_state=self.game_state,
+                        log_func=self.log_action
+                    )
+                    print(f"✓ TAGGED: Lineage tagged with '{claimant}'")
+                except TagVerificationError as e:
+                    self.log_action("Tag verification FAILED", str(e))
+                    print(f"✗ TAG FAILED: {e}")
+                    # Continue anyway (fail-open pattern)
+                except Exception as e:
+                    self.log_action("Tagging error", str(e))
+                    print(f"✗ TAGGING ERROR: {e}")
+                    # Continue anyway
+
+            # Execute L action (old pattern for now)
             self.log_action("Winner: L", f"Sending Insert keypress (Claimant: {claimant})")
             result = send_keypress('Insert', self.log_action)
             if result['success']:
                 print(f"✓ EXECUTED: Insert keypress (L wins, claimant: {claimant})")
             else:
                 print(f"✗ FAILED: Insert keypress - {result.get('error', 'Unknown error')}")
+            send_keypress('ctrl+r', self.log_action)
         else:
             # X wins or tie
             self.log_action("Winner: X", "No action (extend)")

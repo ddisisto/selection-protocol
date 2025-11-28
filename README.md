@@ -25,17 +25,25 @@ Selection Protocol is a Twitch streaming experiment where chat votes every ~60 s
 - Vote system (k/l/x) with first-L claimant logic
 - Dynamic timer (30-120s, entropy-based, elapsed-time tracking)
 - Automated vote execution (timer expires → winner executes)
-- Game commands (+/- zoom, 1/2/3/4 info panels, h/s UI visibility)
+- Game commands (+/- zoom, 0-4 info panels)
 - Self-regulating cooldown system (distance-based, prevents extremes)
 - SocketIO integration (bot ↔ Flask ↔ vote_manager ↔ game_state)
 - Window auto-discovery (fail-fast validation)
 - Vote display in overlay (real-time counts, timer, first-L claimant)
+- Chat announcements (round start/end, outcomes, colored by context)
 
-**❌ Phase 2 (Not Started):**
-- Lineage tagging system (username → parent before Insert)
-- Overlay UI polish (branched to feature/game-state-overlay-ui)
-- Chat announcements (CTA, round start/end, outcomes)
+**✅ Phase 2 Core:**
+- **Lineage tagging system** - First L voter's username tags parent organism
+  - Automated sequence: pause → click tag field → verify → paste → confirm
+  - Clipboard verification (stuffing trick ensures field read, not clipboard)
+  - Context managers for game state control (pause, panel override)
+  - Exclusive IO pattern prevents concurrent access
+  - Fail-open: tag errors logged but don't block L execution
+
+**🚧 Phase 2 Remaining:**
+- Overlay UI polish (feature/game-state-overlay-ui branch)
 - Community features (!lineage, !stats commands)
+- Lineage tracking/statistics from save files
 
 ## Quick Start
 
@@ -112,12 +120,12 @@ Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager → 
 
 **Key Components:**
 - **Action Registry** ([src/actions.py](src/actions.py)) - Vote command definitions (k/l/x)
-- **Game Commands** ([src/game_commands.py](src/game_commands.py)) - Direct commands (+/-/1-4/h/s)
-- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking, timer, execution
-- **Game State** ([src/game_state.py](src/game_state.py)) - Command cooldowns, self-regulation
+- **Game Commands** ([src/game_commands.py](src/game_commands.py)) - Direct commands (+/-/0-4)
+- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking, timer, execution, lineage tagging
+- **Game State** ([src/game_state.py](src/game_state.py)) - Command cooldowns, context managers for forced state
 - **EventSub Bot** ([src/twitch_bot.py](src/twitch_bot.py)) - Twitch chat integration
 - **Flask Server** ([src/server.py](src/server.py)) - Overlay + admin panel + SocketIO
-- **Game Controller** ([src/game_controller.py](src/game_controller.py)) - xdotool automation
+- **Game Controller** ([src/game_controller.py](src/game_controller.py)) - Exclusive IO, xdotool automation, lineage tagging
 
 ## Credits
 
@@ -127,7 +135,7 @@ Game: [The Bibites](https://thebibites.com) by Leo Caussan
 ---
 
 > DEMOCRACY ONLINE
-> VOTE TRACKING: OPERATIONAL
-> SELECTION PROTOCOL: INITIALIZED
+> LINEAGE TAGGING: OPERATIONAL
+> SELECTION PROTOCOL: ACTIVE
 
 🔥
