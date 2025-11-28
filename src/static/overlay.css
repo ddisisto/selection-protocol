@@ -36,6 +36,7 @@
     display: flex;
     flex-direction: column;
     background: var(--color-bg-primary);
+    padding: 0;
 }
 
 .overlay-title {
@@ -50,28 +51,56 @@
     background: #808080;
     text-transform: uppercase;
     letter-spacing: var(--letter-spacing-wider);
-}
-
-.overlay-container {
-    margin-top: auto;
-    background: var(--color-bg-primary);
-    border: none;
-    border-radius: var(--radius-xl);
-    padding: var(--space-5) var(--space-6);
-    margin-left: var(--space-5);
-    margin-right: var(--space-5);
-    margin-bottom: var(--space-5);
+    flex-shrink: 0;
 }
 
 /* ============================================================
-   MAIN LAYOUT
+   CONTENT SECTIONS (Command Log, Bottom Row, Footer)
    ============================================================ */
 
-.overlay-main-layout {
+.content-command-log {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--color-bg-elevated);
+    padding: var(--space-4);
+    margin: var(--space-4) var(--space-5) 0 var(--space-5);
+    border-radius: var(--radius-lg);
+    min-height: 200px;
+}
+
+.content-bottom-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: var(--space-5);
+    padding: var(--space-4) var(--space-5);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pie-area {
     display: flex;
     justify-content: center;
     align-items: center;
 }
+
+.widgets-area {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    justify-content: center;
+}
+
+.content-footer-ticker {
+    height: 50px;
+    background: var(--color-bg-tertiary);
+    padding: var(--space-3) var(--space-5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-top: 1px solid var(--color-border);
+}
+
 
 /* ============================================================
    PIE CHART

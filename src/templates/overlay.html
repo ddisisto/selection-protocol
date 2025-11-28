@@ -9,13 +9,30 @@
         <div class="overlay-wrapper">
             <div class="overlay-title">SELECTION PROTOCOL</div>
 
-            <div class="overlay-container">
-                <div class="overlay-main-layout">
+            <!-- Command Log (scrolling history) -->
+            <div class="content-command-log">
+                <!-- Command entries will be added here via JS -->
+            </div>
+
+            <!-- Bottom Row: Pie Chart + Widgets -->
+            <div class="content-bottom-row">
+                <!-- Pie Chart Area (left) -->
+                <div class="pie-area">
                     <div class="overlay-pie-chart">
                         <canvas id="pieChart" width="140" height="140"></canvas>
                         <div class="overlay-timer" id="time-remaining">30s</div>
                     </div>
                 </div>
+
+                <!-- Widgets Area (right: view grid + zoom disk) -->
+                <div class="widgets-area">
+                    <!-- Widgets will be added in subsequent commits -->
+                </div>
+            </div>
+
+            <!-- Footer Ticker (status/announcements) -->
+            <div class="content-footer-ticker">
+                <!-- Footer content will be added in subsequent commit -->
             </div>
         </div>
     </div>
