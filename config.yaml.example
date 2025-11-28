@@ -15,3 +15,10 @@ twitch:
 game:
   # Window title for auto-discovery (xdotool search --name)
   window_title: "The Bibites"
+
+  # Tag field coordinates (window-relative)
+  # Must be in info panel '1' view for tag field to be visible
+  # Discover manually: run game, find tag field location
+  tag_field:
+    x: 225
+    y: 225

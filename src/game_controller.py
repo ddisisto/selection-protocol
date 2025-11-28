@@ -354,7 +354,7 @@ def apply_lineage_tag(username, game_state, log_func=None):
     Apply lineage tag with clipboard verification.
 
     Sequence:
-    1. Click tag field (225, 225)
+    1. Click tag field (coordinates from config.yaml)
     2. Ctrl-A, Ctrl-C (read current tag)
     3. Validate clipboard looks like tag field
     4. Write username to clipboard
@@ -380,23 +380,33 @@ def apply_lineage_tag(username, game_state, log_func=None):
     Returns:
         dict: {'success': True, 'username': username, 'verified': True}
     """
+    # Load tag field coordinates from config
+    config_path = Path(__file__).parent.parent / 'config.yaml'
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        tag_x = config['game']['tag_field']['x']
+        tag_y = config['game']['tag_field']['y']
+    except (FileNotFoundError, KeyError) as e:
+        raise RuntimeError(f"Tag field coordinates missing in config.yaml: {e}")
+
     if log_func:
-        log_func("Lineage tagging START", f"Username: {username}")
+        log_func("Lineage tagging START", f"Username: {username}, Field: ({tag_x}, {tag_y})")
 
     # Use tagging context (paused + panel '1')
     with game_state.tagging_context(log_func):
-        with io() as io:
+        with io() as game_io:
             # Step 1: Click tag field
-            io.click(225, 225, log_func)
+            game_io.click(tag_x, tag_y, log_func)
             time.sleep(0.1)
 
             # Step 2: Read current tag (validation)
-            io.keypress('ctrl+a', log_func)
+            game_io.keypress('ctrl+a', log_func)
             time.sleep(0.05)
-            io.keypress('ctrl+c', log_func)
+            game_io.keypress('ctrl+c', log_func)
             time.sleep(0.05)
 
-            current_tag = io.read_clipboard(log_func)
+            current_tag = game_io.read_clipboard(log_func)
 
             # Step 3: Validate clipboard looks like tag field
             # Empty/whitespace = good (new organism)
@@ -415,25 +425,25 @@ def apply_lineage_tag(username, game_state, log_func=None):
                          f"Current: '{current_tag}' ({len(current_tag)} chars)")
 
             # Step 4: Write username to clipboard
-            io.write_clipboard(username, log_func)
+            game_io.write_clipboard(username, log_func)
             time.sleep(0.05)
 
             # Step 5: Paste username
-            io.keypress('ctrl+v', log_func)
+            game_io.keypress('ctrl+v', log_func)
             time.sleep(0.1)
 
             # Step 6: Stuff clipboard with dummy text
             # This ensures Ctrl-C reads from field, not our clipboard write
-            io.write_clipboard("##VERIFY##", log_func)
+            game_io.write_clipboard("##VERIFY##", log_func)
             time.sleep(0.05)
 
             # Step 7: Read what's ACTUALLY in the field
-            io.keypress('ctrl+a', log_func)
+            game_io.keypress('ctrl+a', log_func)
             time.sleep(0.05)
-            io.keypress('ctrl+c', log_func)
+            game_io.keypress('ctrl+c', log_func)
             time.sleep(0.05)
 
-            actual_tag = io.read_clipboard(log_func)
+            actual_tag = game_io.read_clipboard(log_func)
 
             # Step 8: Verify match
             if actual_tag != username:
@@ -448,7 +458,7 @@ def apply_lineage_tag(username, game_state, log_func=None):
                 log_func("Tag verification SUCCESS", f"'{username}' confirmed in field")
 
             # Step 9: Confirm tag
-            io.keypress('Return', log_func)
+            game_io.keypress('Return', log_func)
             time.sleep(0.1)
 
     # Tagging context auto-restores (unpause + restore panel)
