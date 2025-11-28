@@ -183,15 +183,15 @@ socket.on('vote_update', function(data) {
         }
     }
 
-    // Status removed - will use footer ticker instead
-    // const statusEl = document.getElementById('status');
-    // if (statusEl) {
-    //     if (data.voting_active) {
-    //         statusEl.textContent = 'Chat decides fate (NOT YET LIVE). Features coming: KILL, REPRODUCE, change target, zoom, change/show/hide info overlay panels';
-    //     } else {
-    //         statusEl.textContent = 'Waiting for next vote...';
-    //     }
-    // }
+    // Update footer metadata (vote counts + timer)
+    const metaEl = document.getElementById('footer-metadata');
+    if (metaEl) {
+        if (data.time_remaining !== null && data.time_remaining !== undefined) {
+            metaEl.textContent = `K:${data.k_votes} L:${data.l_votes} X:${data.x_votes} | ${data.time_remaining}s`;
+        } else {
+            metaEl.textContent = `K:${data.k_votes} L:${data.l_votes} X:${data.x_votes}`;
+        }
+    }
 });
 
 // Game state listener (info panels + zoom)
@@ -275,6 +275,39 @@ socket.on('command_logged', function(data) {
     // Limit history to 20 entries (FIFO removal)
     while (log.children.length > 20) {
         log.removeChild(log.lastChild);
+    }
+});
+
+// Round lifecycle listeners
+socket.on('round_start', function(data) {
+    const msg = document.getElementById('footer-message');
+    if (msg) {
+        const vote = data.vote.toUpperCase();
+        const color = vote === 'K' ? '#ff6666' : '#6666ff';
+        msg.innerHTML = `Round started by <span style="color: ${color}">${data.username}</span> (${vote})`;
+    }
+});
+
+socket.on('round_end', function(data) {
+    const msg = document.getElementById('footer-message');
+    if (msg) {
+        const winner = data.winner.toUpperCase();
+
+        let text = '';
+        let color = '';
+        if (winner === 'K') {
+            text = 'Kill executed';
+            color = '#ff6666';
+        } else if (winner === 'L') {
+            const claimant = data.first_l_claimant || 'Unknown';
+            text = `Lay executed (${claimant})`;
+            color = '#6666ff';
+        } else {
+            text = 'Extended (no action)';
+            color = '#00ff88';
+        }
+
+        msg.innerHTML = `<span style="color: ${color}">${text}</span>`;
     }
 });
 
