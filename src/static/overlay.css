@@ -164,6 +164,16 @@
     color: var(--color-text-tertiary);
 }
 
+/* Command log aging animation (CSS-only, no JS timers) */
+.cmd-entry:nth-child(1) { opacity: 1.0; font-size: var(--font-size-sm); }
+.cmd-entry:nth-child(2) { opacity: 0.9; font-size: var(--font-size-sm); }
+.cmd-entry:nth-child(3) { opacity: 0.85; font-size: var(--font-size-xs); }
+.cmd-entry:nth-child(4) { opacity: 0.8; font-size: var(--font-size-xs); }
+.cmd-entry:nth-child(5) { opacity: 0.75; font-size: var(--font-size-xs); }
+.cmd-entry:nth-child(n+6) { opacity: 0.6; font-size: calc(var(--font-size-xs) * 0.9); }
+.cmd-entry:nth-child(n+11) { opacity: 0.4; font-size: calc(var(--font-size-xs) * 0.85); }
+.cmd-entry:nth-child(n+16) { opacity: 0.2; font-size: calc(var(--font-size-xs) * 0.8); }
+
 /* ============================================================
    INFO PANEL VIEW GRID (2x2 widget)
    ============================================================ */
