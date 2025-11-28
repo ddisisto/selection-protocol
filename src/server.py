@@ -53,11 +53,13 @@ def log_action(action, details=""):
     print(log_entry)
 
 
-# Initialize vote manager (owns vote state)
-vote_manager = VoteManager(socketio, log_action)
-
 # Initialize game state (owns command state, cooldowns, tracking)
+# Must be created first so vote_manager can use it for tagging context
 game_state = GameState(socketio)
+
+# Initialize vote manager (owns vote state)
+# Pass game_state for lineage tagging context
+vote_manager = VoteManager(socketio, game_state, log_action)
 
 # Setup WebSocket handlers
 broadcast_states = setup_socketio_handlers(socketio, admin_state, log_action, vote_manager, game_state)
