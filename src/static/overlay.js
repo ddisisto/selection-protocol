@@ -194,5 +194,34 @@ socket.on('vote_update', function(data) {
     // }
 });
 
+// Command log listener
+socket.on('command_logged', function(data) {
+    const log = document.getElementById('command-log-entries');
+    if (!log) return;
+
+    // Create new entry
+    const entry = document.createElement('div');
+    entry.className = data.accepted ? 'cmd-entry cmd-accepted' : 'cmd-entry cmd-rejected';
+
+    const charSpan = document.createElement('span');
+    charSpan.className = 'cmd-char';
+    charSpan.textContent = data.command;
+
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'cmd-username';
+    usernameSpan.textContent = data.username;
+
+    entry.appendChild(charSpan);
+    entry.appendChild(usernameSpan);
+
+    // Prepend (newest on top)
+    log.insertBefore(entry, log.firstChild);
+
+    // Limit history to 20 entries (FIFO removal)
+    while (log.children.length > 20) {
+        log.removeChild(log.lastChild);
+    }
+});
+
 // Initial draw
 drawPieChart(0, 0, 0);

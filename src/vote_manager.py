@@ -72,6 +72,7 @@ class VoteManager:
         """
         # Validate vote
         if not is_valid_action(vote):
+            self._broadcast_command(username, vote, accepted=False)
             return False
 
         timestamp = timestamp or datetime.now()
@@ -79,6 +80,7 @@ class VoteManager:
 
         # Reject duplicate votes (same as current)
         if previous_vote == vote:
+            self._broadcast_command(username, vote, accepted=False)
             return False
 
         # Record vote
@@ -100,6 +102,9 @@ class VoteManager:
 
         # Log the vote
         self.log_action(f"Vote: {username}", f"{vote.upper()}")
+
+        # Broadcast command to overlay (for command log)
+        self._broadcast_command(username, vote, accepted=True)
 
         # Broadcast updated state
         self._broadcast_state()
@@ -468,6 +473,22 @@ class VoteManager:
             list: Action codes (e.g., ['k', 'l', 'x'])
         """
         return [code for code, action in self.actions.items() if action['enabled']]
+
+    def _broadcast_command(self, username, vote, accepted):
+        """
+        Broadcast command to overlay for history display.
+
+        Args:
+            username: User who issued the command
+            vote: Command/vote code ('k', 'l', 'x')
+            accepted: Whether command was accepted (True) or rejected (False)
+        """
+        self.socketio.emit('command_logged', {
+            'username': username,
+            'command': vote,
+            'accepted': accepted,
+            'timestamp': datetime.now().isoformat()
+        })
 
     def _broadcast_state(self):
         """Broadcast current vote state to all connected clients."""
