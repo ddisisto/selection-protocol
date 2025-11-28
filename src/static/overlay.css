@@ -45,13 +45,14 @@
     justify-content: center;
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-black);
-    height: 120px;
-    padding: 0 var(--space-10) var(--space-3) var(--space-10);
+    height: 100px;
+    padding: 0 var(--space-10) var(--space-4) var(--space-10);
     color: var(--color-text-primary);
-    background: #808080;
+    background: linear-gradient(180deg, #606060 0%, #404040 100%);
     text-transform: uppercase;
     letter-spacing: var(--letter-spacing-wider);
     flex-shrink: 0;
+    border-bottom: 2px solid var(--color-border);
 }
 
 /* ============================================================
