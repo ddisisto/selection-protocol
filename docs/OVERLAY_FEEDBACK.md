@@ -139,4 +139,39 @@ Decide during implementation based on visual balance.
 
 ---
 
+## Implementation Status
+
+**Completed:** 2025-11-28 (feature/overlay-redesign branch)
+
+Core implementation complete with 14 commits:
+- ✅ 3-column layout (black sidebars for in-game UI dodge)
+- ✅ Command log with aging animation (CSS-only, nth-child selectors)
+- ✅ Info panel view grid (2x2, active highlighting)
+- ✅ Zoom disk widget (distance + cooldown display)
+- ✅ Footer ticker (announcements + vote metadata)
+- ✅ SocketIO event connections (command_logged, game_state_update, round lifecycle)
+- ✅ Real-time updates for all widgets
+- ✅ Layout polish and visual hierarchy refinements
+
+**Acceptance Criteria Status:**
+- [x] Commands appear in history list within 1s of execution
+- [x] Rejected commands visually distinct (strikethrough)
+- [x] History ages out gracefully (alpha + size reduction via nth-child)
+- [x] Cooldown timers tick down in real-time (zoom shows min of both directions)
+- [ ] Cooldown attribution shows username (deferred - not yet implemented in backend)
+- [ ] Attribution fades as cooldown expires (deferred)
+- [x] Zoom distance displayed and updates on change
+- [x] All elements use appropriate fonts (monospace for command log + metadata)
+- [x] No performance degradation (CSS-only aging, 20-entry limit)
+
+**Answered Questions:**
+1. Max history: **20 entries** (FIFO removal)
+2. Fade timing: **0.5s ease** (transition on cmd-entry)
+3. Username truncation: **text-overflow: ellipsis** (no hard limit)
+4. Cooldown layout: **Widgets stacked vertically** (view grid above zoom disk)
+
+**Ready for:** Integration testing with live Twitch chat + game commands
+
+---
+
 > **Sprint Focus:** Feedback loop, not polish. Get information visible first, refine aesthetics after validation.
