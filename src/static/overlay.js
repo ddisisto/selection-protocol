@@ -130,37 +130,37 @@ function drawPieChart(kVotes, lVotes, xVotes) {
 socket.on('vote_update', function(data) {
     console.log('Vote update:', data);
 
-    // Update vote counts
-    const kCountEl = document.getElementById('k-count');
-    const lCountEl = document.getElementById('l-count');
-    const xCountEl = document.getElementById('x-count');
-
-    // Trigger animation if value changed (CSS-based, stateless)
-    if (kCountEl && kCountEl.textContent !== String(data.k_votes)) {
-        kCountEl.classList.remove('animate');
-        void kCountEl.offsetWidth; // Force reflow
-        kCountEl.classList.add('animate');
-    }
-    if (lCountEl && lCountEl.textContent !== String(data.l_votes)) {
-        lCountEl.classList.remove('animate');
-        void lCountEl.offsetWidth; // Force reflow
-        lCountEl.classList.add('animate');
-    }
-    if (xCountEl && xCountEl.textContent !== String(data.x_votes)) {
-        xCountEl.classList.remove('animate');
-        void xCountEl.offsetWidth; // Force reflow
-        xCountEl.classList.add('animate');
-    }
-
-    kCountEl.textContent = data.k_votes;
-    lCountEl.textContent = data.l_votes;
-    xCountEl.textContent = data.x_votes;
-
-    // Update first-L claimant
-    const claimantEl = document.getElementById('l-claimant');
-    if (claimantEl) {
-        claimantEl.textContent = data.first_l_claimant || '';
-    }
+    // Vote counts removed - will be shown in command log instead
+    // const kCountEl = document.getElementById('k-count');
+    // const lCountEl = document.getElementById('l-count');
+    // const xCountEl = document.getElementById('x-count');
+    //
+    // // Trigger animation if value changed (CSS-based, stateless)
+    // if (kCountEl && kCountEl.textContent !== String(data.k_votes)) {
+    //     kCountEl.classList.remove('animate');
+    //     void kCountEl.offsetWidth; // Force reflow
+    //     kCountEl.classList.add('animate');
+    // }
+    // if (lCountEl && lCountEl.textContent !== String(data.l_votes)) {
+    //     lCountEl.classList.remove('animate');
+    //     void lCountEl.offsetWidth; // Force reflow
+    //     lCountEl.classList.add('animate');
+    // }
+    // if (xCountEl && xCountEl.textContent !== String(data.x_votes)) {
+    //     xCountEl.classList.remove('animate');
+    //     void xCountEl.offsetWidth; // Force reflow
+    //     xCountEl.classList.add('animate');
+    // }
+    //
+    // kCountEl.textContent = data.k_votes;
+    // lCountEl.textContent = data.l_votes;
+    // xCountEl.textContent = data.x_votes;
+    //
+    // // Update first-L claimant
+    // const claimantEl = document.getElementById('l-claimant');
+    // if (claimantEl) {
+    //     claimantEl.textContent = data.first_l_claimant || '';
+    // }
 
     // Update pie chart
     drawPieChart(data.k_votes, data.l_votes, data.x_votes);
@@ -183,15 +183,15 @@ socket.on('vote_update', function(data) {
         }
     }
 
-    // Update status
-    const statusEl = document.getElementById('status');
-    if (statusEl) {
-        if (data.voting_active) {
-            statusEl.textContent = 'Chat decides fate (NOT YET LIVE). Features coming: KILL, REPRODUCE, change target, zoom, change/show/hide info overlay panels';
-        } else {
-            statusEl.textContent = 'Waiting for next vote...';
-        }
-    }
+    // Status removed - will use footer ticker instead
+    // const statusEl = document.getElementById('status');
+    // if (statusEl) {
+    //     if (data.voting_active) {
+    //         statusEl.textContent = 'Chat decides fate (NOT YET LIVE). Features coming: KILL, REPRODUCE, change target, zoom, change/show/hide info overlay panels';
+    //     } else {
+    //         statusEl.textContent = 'Waiting for next vote...';
+    //     }
+    // }
 });
 
 // Initial draw

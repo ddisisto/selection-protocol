@@ -64,20 +64,13 @@
 }
 
 /* ============================================================
-   MAIN LAYOUT (PIE + VOTES)
+   MAIN LAYOUT
    ============================================================ */
 
 .overlay-main-layout {
-    display: grid;
-    grid-template-columns: 150px 1fr;
-    gap: var(--space-6);
-    align-items: center;
-}
-
-.overlay-right-section {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
+    justify-content: center;
+    align-items: center;
 }
 
 /* ============================================================
@@ -118,131 +111,3 @@
     z-index: 10;
 }
 
-/* ============================================================
-   VOTE ITEMS (K/L/X cards)
-   ============================================================ */
-
-.overlay-votes-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-4);
-}
-
-.overlay-vote-item {
-    background: var(--color-bg-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    border: 2px solid transparent;
-    transition: border-color var(--transition-normal);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.overlay-vote-item--k {
-    border-color: var(--color-kill);
-}
-
-.overlay-vote-item--l {
-    border-color: var(--color-lay);
-}
-
-.overlay-vote-item--x {
-    border-color: var(--color-extend);
-}
-
-/* Vote Label */
-.overlay-vote-item__label {
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-bold);
-    text-transform: uppercase;
-    letter-spacing: var(--letter-spacing-wide);
-}
-
-.overlay-vote-item__label--k {
-    color: var(--color-kill-light);
-}
-
-.overlay-vote-item__label--l {
-    color: var(--color-lay-light);
-}
-
-.overlay-vote-item__label--x {
-    color: var(--color-extend-light);
-}
-
-/* Vote Number */
-.overlay-vote-item__number {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    position: relative;
-    display: inline-block;
-}
-
-.overlay-vote-item__number--k {
-    color: var(--color-kill-light);
-}
-
-.overlay-vote-item__number--l {
-    color: var(--color-lay-light);
-}
-
-.overlay-vote-item__number--x {
-    color: var(--color-extend-light);
-}
-
-/* Vote Claimant (first-L indicator) */
-.overlay-vote-item__claimant {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-tertiary);
-    font-weight: var(--font-weight-normal);
-    font-style: italic;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* ============================================================
-   VOTE BARS (percentage indicators)
-   ============================================================ */
-
-.overlay-vote-bar-container {
-    height: 12px;
-    background: var(--color-bg-elevated);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.overlay-vote-bar {
-    height: 100%;
-    transition: width var(--transition-slow);
-    border-radius: var(--radius-md);
-}
-
-.overlay-vote-bar--k {
-    background: linear-gradient(90deg, var(--color-kill), var(--color-kill-light));
-}
-
-.overlay-vote-bar--l {
-    background: linear-gradient(90deg, var(--color-lay), var(--color-lay-light));
-}
-
-.overlay-vote-bar--x {
-    background: linear-gradient(90deg, var(--color-extend), var(--color-extend-light));
-}
-
-/* ============================================================
-   STATUS MESSAGE
-   ============================================================ */
-
-.overlay-status {
-    text-align: center;
-    font-size: var(--font-size-lg);
-    color: var(--color-text-primary);
-    background: var(--color-bg-elevated);
-    text-shadow: 2px 2px 4px #00FFFF;
-    margin-top: var(--space-3);
-    font-style: italic;
-}

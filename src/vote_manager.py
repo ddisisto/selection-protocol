@@ -337,7 +337,9 @@ class VoteManager:
                 print("✓ EXECUTED: Delete keypress (K wins)")
             else:
                 print(f"✗ FAILED: Delete keypress - {result.get('error', 'Unknown error')}")
-            send_keypress('ctrl+r', self.log_action)
+            
+            # send_keypress('ctrl+r', self.log_action)
+        
         elif winner == 'l':
             claimant = self.first_l_claimant or "Unknown"
 
@@ -367,7 +369,8 @@ class VoteManager:
                 print(f"✓ EXECUTED: Insert keypress (L wins, claimant: {claimant})")
             else:
                 print(f"✗ FAILED: Insert keypress - {result.get('error', 'Unknown error')}")
-            send_keypress('ctrl+r', self.log_action)
+            
+            # send_keypress('ctrl+r', self.log_action)
         else:
             # X wins or tie
             self.log_action("Winner: X", "No action (extend)")
