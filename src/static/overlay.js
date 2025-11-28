@@ -194,6 +194,24 @@ socket.on('vote_update', function(data) {
     // }
 });
 
+// Game state listener (info panels + zoom)
+socket.on('game_state_update', function(data) {
+    console.log('Game state update:', data);
+
+    // Update info panel active state
+    if (data.info_panels && data.info_panels.current !== undefined) {
+        const current = data.info_panels.current;
+        document.querySelectorAll('.view-panel').forEach(panel => {
+            const panelNum = parseInt(panel.dataset.panel);
+            if (panelNum === current) {
+                panel.classList.add('view-panel--active');
+            } else {
+                panel.classList.remove('view-panel--active');
+            }
+        });
+    }
+});
+
 // Command log listener
 socket.on('command_logged', function(data) {
     const log = document.getElementById('command-log-entries');
