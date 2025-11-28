@@ -101,6 +101,50 @@
     border-top: 1px solid var(--color-border);
 }
 
+/* ============================================================
+   COMMAND LOG ENTRIES
+   ============================================================ */
+
+#command-log-entries {
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: var(--font-size-sm);
+}
+
+.cmd-entry {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: opacity 0.5s ease, font-size 0.5s ease;
+    background: var(--color-bg-primary);
+}
+
+.cmd-char {
+    width: 2ch;
+    text-align: center;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    flex-shrink: 0;
+}
+
+.cmd-username {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-text-secondary);
+}
+
+.cmd-rejected {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.cmd-rejected .cmd-char,
+.cmd-rejected .cmd-username {
+    color: var(--color-text-tertiary);
+}
 
 /* ============================================================
    PIE CHART

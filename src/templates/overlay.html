@@ -11,7 +11,14 @@
 
             <!-- Command Log (scrolling history) -->
             <div class="content-command-log">
-                <!-- Command entries will be added here via JS -->
+                <div id="command-log-entries">
+                    <!-- Command entry template:
+                    <div class="cmd-entry [cmd-accepted|cmd-rejected]">
+                        <span class="cmd-char">k</span>
+                        <span class="cmd-username">viewer123</span>
+                    </div>
+                    -->
+                </div>
             </div>
 
             <!-- Bottom Row: Pie Chart + Widgets -->
