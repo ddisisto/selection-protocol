@@ -210,6 +210,43 @@ socket.on('game_state_update', function(data) {
             }
         });
     }
+
+    // Update zoom distance
+    if (data.zoom && data.zoom.distance !== undefined) {
+        const distEl = document.getElementById('zoom-distance');
+        if (distEl) {
+            const distance = data.zoom.distance;
+            distEl.textContent = (distance >= 0 ? '+' : '') + distance;
+
+            // Color based on distance
+            if (distance > 0) {
+                distEl.style.color = '#ffaa00'; // Yellow-orange (far out)
+            } else if (distance < 0) {
+                distEl.style.color = '#00aaff'; // Light blue (zoomed in)
+            } else {
+                distEl.style.color = ''; // Reset to default (neutral)
+            }
+        }
+    }
+
+    // Update zoom cooldown (show min of both directions)
+    if (data.zoom && data.zoom.cooldowns !== undefined) {
+        const cooldownEl = document.getElementById('zoom-cooldown');
+        if (cooldownEl) {
+            const cooldowns = data.zoom.cooldowns; // {in: 1.0, out: 7.3}
+
+            // Show shortest cooldown (most permissive direction)
+            const minCooldown = Math.min(cooldowns.in, cooldowns.out);
+
+            if (minCooldown > 0) {
+                cooldownEl.textContent = minCooldown.toFixed(1) + 's';
+                cooldownEl.style.color = '#ffaa00'; // Yellow-orange (cooling down)
+            } else {
+                cooldownEl.textContent = 'Ready';
+                cooldownEl.style.color = '#00ff88'; // Green (ready)
+            }
+        }
+    }
 });
 
 // Command log listener
