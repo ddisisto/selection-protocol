@@ -1,35 +1,47 @@
-<!-- Overlay Wrapper - Right Side (visible in OBS) -->
-<div class="overlay-wrapper">
-    <div class="overlay-title">SELECTION PROTOCOL</div>
+<!-- 3-Column Grid Layout (black sidebars for in-game UI dodge) -->
+<div class="overlay-3col-grid">
+    <!-- Left sidebar (black dodge space) -->
+    <div class="sidebar-left"></div>
 
-    <div class="overlay-container">
-        <div class="overlay-main-layout">
-            <div class="overlay-pie-chart">
-                <canvas id="pieChart" width="140" height="140"></canvas>
-                <div class="overlay-timer" id="time-remaining">30s</div>
-            </div>
+    <!-- Center content area -->
+    <div class="sidebar-content">
+        <!-- Overlay Wrapper - Center Column (visible in OBS) -->
+        <div class="overlay-wrapper">
+            <div class="overlay-title">SELECTION PROTOCOL</div>
 
-            <div class="overlay-right-section">
-                <div class="overlay-votes-container">
-                    <div class="overlay-vote-item overlay-vote-item--l">
-                        <span class="overlay-vote-item__label overlay-vote-item__label--l">L: Lay</span>
-                        <span class="overlay-vote-item__number overlay-vote-item__number--l" id="l-count">0</span>
-                        <span class="overlay-vote-item__claimant" id="l-claimant"></span>
+            <div class="overlay-container">
+                <div class="overlay-main-layout">
+                    <div class="overlay-pie-chart">
+                        <canvas id="pieChart" width="140" height="140"></canvas>
+                        <div class="overlay-timer" id="time-remaining">30s</div>
                     </div>
 
-                    <div class="overlay-vote-item overlay-vote-item--x">
-                        <span class="overlay-vote-item__label overlay-vote-item__label--x">X: Extend</span>
-                        <span class="overlay-vote-item__number overlay-vote-item__number--x" id="x-count">0</span>
-                    </div>
+                    <div class="overlay-right-section">
+                        <div class="overlay-votes-container">
+                            <div class="overlay-vote-item overlay-vote-item--l">
+                                <span class="overlay-vote-item__label overlay-vote-item__label--l">L: Lay</span>
+                                <span class="overlay-vote-item__number overlay-vote-item__number--l" id="l-count">0</span>
+                                <span class="overlay-vote-item__claimant" id="l-claimant"></span>
+                            </div>
 
-                    <div class="overlay-vote-item overlay-vote-item--k">
-                        <span class="overlay-vote-item__label overlay-vote-item__label--k">K: Kill</span>
-                        <span class="overlay-vote-item__number overlay-vote-item__number--k" id="k-count">0</span>
+                            <div class="overlay-vote-item overlay-vote-item--x">
+                                <span class="overlay-vote-item__label overlay-vote-item__label--x">X: Extend</span>
+                                <span class="overlay-vote-item__number overlay-vote-item__number--x" id="x-count">0</span>
+                            </div>
+
+                            <div class="overlay-vote-item overlay-vote-item--k">
+                                <span class="overlay-vote-item__label overlay-vote-item__label--k">K: Kill</span>
+                                <span class="overlay-vote-item__number overlay-vote-item__number--k" id="k-count">0</span>
+                            </div>
+                        </div>
+
+                        <div class="overlay-status" id="status">Waiting for votes...</div>
                     </div>
                 </div>
-
-                <div class="overlay-status" id="status">Waiting for votes...</div>
             </div>
         </div>
     </div>
+
+    <!-- Right sidebar (black dodge space) -->
+    <div class="sidebar-right"></div>
 </div>

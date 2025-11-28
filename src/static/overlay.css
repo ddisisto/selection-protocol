@@ -6,6 +6,28 @@
  */
 
 /* ============================================================
+   3-COLUMN GRID LAYOUT (Black sidebars for in-game UI dodge)
+   ============================================================ */
+
+.overlay-3col-grid {
+    display: grid;
+    grid-template-columns: 1fr 4fr 1fr;
+    height: 100vh;
+    width: 100%;
+}
+
+.sidebar-left,
+.sidebar-right {
+    background: var(--color-bg-primary);
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-primary);
+}
+
+/* ============================================================
    OVERLAY LAYOUT
    ============================================================ */
 
