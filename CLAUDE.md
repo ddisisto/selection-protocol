@@ -139,12 +139,6 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 
 ---
 
-## Vote Mechanics (Locked Specification)
-
-@docs/VOTING_RULES.md
-
----
-
 ## System Architecture
 
 **Key Components:**
