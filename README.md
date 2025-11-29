@@ -39,11 +39,16 @@ Selection Protocol is a Twitch streaming experiment where chat votes every ~60 s
   - Context managers for game state control (pause, panel override)
   - Exclusive IO pattern prevents concurrent access
   - Fail-open: tag errors logged but don't block L execution
+- **Overlay redesign** - 3-column layout with game state widgets
+  - Command log with aging animation and real-time vote tracking
+  - Info panel 2x2 grid with active highlighting
+  - Zoom widget showing distance + directional cooldowns
+  - Full-width footer ticker for round lifecycle events
 
 **🚧 Phase 2 Remaining:**
-- Overlay UI polish (feature/game-state-overlay-ui branch)
-- Community features (!lineage, !stats commands)
-- Lineage tracking/statistics from save files
+- [Overlay functionality improvements](https://github.com/ddisisto/selection-protocol/issues/6) - Edge cases, missing data displays
+- [Game integration reliability](https://github.com/ddisisto/selection-protocol/issues/2) - Architecture decision (automation vs modding)
+  - Blocked issues: [#3 Timing](https://github.com/ddisisto/selection-protocol/issues/3), [#4 Observable state](https://github.com/ddisisto/selection-protocol/issues/4), [#5 Input focus](https://github.com/ddisisto/selection-protocol/issues/5)
 
 ## Quick Start
 
