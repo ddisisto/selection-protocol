@@ -130,37 +130,37 @@ function drawPieChart(kVotes, lVotes, xVotes) {
 socket.on('vote_update', function(data) {
     console.log('Vote update:', data);
 
-    // Update vote counts
-    const kCountEl = document.getElementById('k-count');
-    const lCountEl = document.getElementById('l-count');
-    const xCountEl = document.getElementById('x-count');
-
-    // Trigger animation if value changed (CSS-based, stateless)
-    if (kCountEl && kCountEl.textContent !== String(data.k_votes)) {
-        kCountEl.classList.remove('animate');
-        void kCountEl.offsetWidth; // Force reflow
-        kCountEl.classList.add('animate');
-    }
-    if (lCountEl && lCountEl.textContent !== String(data.l_votes)) {
-        lCountEl.classList.remove('animate');
-        void lCountEl.offsetWidth; // Force reflow
-        lCountEl.classList.add('animate');
-    }
-    if (xCountEl && xCountEl.textContent !== String(data.x_votes)) {
-        xCountEl.classList.remove('animate');
-        void xCountEl.offsetWidth; // Force reflow
-        xCountEl.classList.add('animate');
-    }
-
-    kCountEl.textContent = data.k_votes;
-    lCountEl.textContent = data.l_votes;
-    xCountEl.textContent = data.x_votes;
-
-    // Update first-L claimant
-    const claimantEl = document.getElementById('l-claimant');
-    if (claimantEl) {
-        claimantEl.textContent = data.first_l_claimant || '';
-    }
+    // Vote counts removed - will be shown in command log instead
+    // const kCountEl = document.getElementById('k-count');
+    // const lCountEl = document.getElementById('l-count');
+    // const xCountEl = document.getElementById('x-count');
+    //
+    // // Trigger animation if value changed (CSS-based, stateless)
+    // if (kCountEl && kCountEl.textContent !== String(data.k_votes)) {
+    //     kCountEl.classList.remove('animate');
+    //     void kCountEl.offsetWidth; // Force reflow
+    //     kCountEl.classList.add('animate');
+    // }
+    // if (lCountEl && lCountEl.textContent !== String(data.l_votes)) {
+    //     lCountEl.classList.remove('animate');
+    //     void lCountEl.offsetWidth; // Force reflow
+    //     lCountEl.classList.add('animate');
+    // }
+    // if (xCountEl && xCountEl.textContent !== String(data.x_votes)) {
+    //     xCountEl.classList.remove('animate');
+    //     void xCountEl.offsetWidth; // Force reflow
+    //     xCountEl.classList.add('animate');
+    // }
+    //
+    // kCountEl.textContent = data.k_votes;
+    // lCountEl.textContent = data.l_votes;
+    // xCountEl.textContent = data.x_votes;
+    //
+    // // Update first-L claimant
+    // const claimantEl = document.getElementById('l-claimant');
+    // if (claimantEl) {
+    //     claimantEl.textContent = data.first_l_claimant || '';
+    // }
 
     // Update pie chart
     drawPieChart(data.k_votes, data.l_votes, data.x_votes);
@@ -183,16 +183,108 @@ socket.on('vote_update', function(data) {
         }
     }
 
-    // Update status
-    const statusEl = document.getElementById('status');
-    if (statusEl) {
-        if (data.voting_active) {
-            statusEl.textContent = 'Chat decides fate (NOT YET LIVE). Features coming: KILL, REPRODUCE, change target, zoom, change/show/hide info overlay panels';
-        } else {
-            statusEl.textContent = 'Waiting for next vote...';
+});
+
+// Game state listener (info panels + zoom)
+socket.on('game_state_update', function(data) {
+    console.log('Game state update:', data);
+
+    // Update info panel active state
+    if (data.info_panels && data.info_panels.current !== undefined) {
+        const current = data.info_panels.current;
+        document.querySelectorAll('.view-panel').forEach(panel => {
+            const panelNum = parseInt(panel.dataset.panel);
+            if (panelNum === current) {
+                panel.classList.add('view-panel--active');
+            } else {
+                panel.classList.remove('view-panel--active');
+            }
+        });
+    }
+
+    // Update zoom distance
+    if (data.zoom && data.zoom.distance !== undefined) {
+        const distEl = document.getElementById('zoom-distance');
+        if (distEl) {
+            const distance = data.zoom.distance;
+            distEl.textContent = (distance >= 0 ? '+' : '') + distance;
+
+            // Color based on distance
+            if (distance > 0) {
+                distEl.style.color = '#ffaa00'; // Yellow-orange (far out)
+            } else if (distance < 0) {
+                distEl.style.color = '#00aaff'; // Light blue (zoomed in)
+            } else {
+                distEl.style.color = ''; // Reset to default (neutral)
+            }
+        }
+    }
+
+    // Update zoom cooldowns (both directions separately)
+    if (data.zoom && data.zoom.cooldowns !== undefined) {
+        const cooldowns = data.zoom.cooldowns; // {in: 1.0, out: 7.3}
+
+        const cooldownInEl = document.getElementById('zoom-cooldown-in');
+        const cooldownOutEl = document.getElementById('zoom-cooldown-out');
+
+        if (cooldownInEl) {
+            if (cooldowns.in > 0) {
+                cooldownInEl.textContent = cooldowns.in.toFixed(1) + 's';
+                cooldownInEl.style.color = '#ffaa00'; // Yellow-orange (cooling down)
+            } else {
+                cooldownInEl.textContent = 'Ready';
+                cooldownInEl.style.color = '#00ff88'; // Green (ready)
+            }
+        }
+
+        if (cooldownOutEl) {
+            if (cooldowns.out > 0) {
+                cooldownOutEl.textContent = cooldowns.out.toFixed(1) + 's';
+                cooldownOutEl.style.color = '#ffaa00'; // Yellow-orange (cooling down)
+            } else {
+                cooldownOutEl.textContent = 'Ready';
+                cooldownOutEl.style.color = '#00ff88'; // Green (ready)
+            }
         }
     }
 });
+
+// Command log listener
+socket.on('command_logged', function(data) {
+    const log = document.getElementById('command-log-entries');
+    if (!log) return;
+
+    // Create new entry
+    const entry = document.createElement('div');
+    entry.className = data.accepted ? 'cmd-entry cmd-accepted' : 'cmd-entry cmd-rejected';
+
+    const charSpan = document.createElement('span');
+    charSpan.className = 'cmd-char';
+    charSpan.textContent = data.command;
+
+    const usernameSpan = document.createElement('span');
+    usernameSpan.className = 'cmd-username';
+    usernameSpan.textContent = data.username;
+
+    entry.appendChild(charSpan);
+    entry.appendChild(usernameSpan);
+
+    // Prepend (newest on top)
+    log.insertBefore(entry, log.firstChild);
+
+    // Limit history to 20 entries (FIFO removal)
+    while (log.children.length > 20) {
+        log.removeChild(log.lastChild);
+    }
+});
+
+// Populate footer date
+const footerDateEl = document.getElementById('footer-date');
+if (footerDateEl) {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    footerDateEl.textContent = dateStr;
+}
 
 // Initial draw
 drawPieChart(0, 0, 0);

@@ -1,35 +1,76 @@
-<!-- Overlay Wrapper - Right Side (visible in OBS) -->
-<div class="overlay-wrapper">
-    <div class="overlay-title">SELECTION PROTOCOL</div>
+<!-- 3-Column Grid Layout (black sidebars for in-game UI dodge) -->
+<div class="overlay-3col-grid">
+    <!-- Left sidebar (black dodge space) -->
+    <div class="sidebar-left"></div>
 
-    <div class="overlay-container">
-        <div class="overlay-main-layout">
-            <div class="overlay-pie-chart">
-                <canvas id="pieChart" width="140" height="140"></canvas>
-                <div class="overlay-timer" id="time-remaining">30s</div>
+    <!-- Center content area -->
+    <div class="sidebar-content">
+        <!-- Overlay Wrapper - Center Column (visible in OBS) -->
+        <div class="overlay-wrapper">
+            <div class="overlay-title">SELECTION PROTOCOL</div>
+
+            <!-- Command Log (scrolling history) -->
+            <div class="content-command-log">
+                <div id="command-log-entries">
+                    <!-- Command entry template:
+                    <div class="cmd-entry [cmd-accepted|cmd-rejected]">
+                        <span class="cmd-char">k</span>
+                        <span class="cmd-username">viewer123</span>
+                    </div>
+                    -->
+                </div>
             </div>
 
-            <div class="overlay-right-section">
-                <div class="overlay-votes-container">
-                    <div class="overlay-vote-item overlay-vote-item--l">
-                        <span class="overlay-vote-item__label overlay-vote-item__label--l">L: Lay</span>
-                        <span class="overlay-vote-item__number overlay-vote-item__number--l" id="l-count">0</span>
-                        <span class="overlay-vote-item__claimant" id="l-claimant"></span>
-                    </div>
-
-                    <div class="overlay-vote-item overlay-vote-item--x">
-                        <span class="overlay-vote-item__label overlay-vote-item__label--x">X: Extend</span>
-                        <span class="overlay-vote-item__number overlay-vote-item__number--x" id="x-count">0</span>
-                    </div>
-
-                    <div class="overlay-vote-item overlay-vote-item--k">
-                        <span class="overlay-vote-item__label overlay-vote-item__label--k">K: Kill</span>
-                        <span class="overlay-vote-item__number overlay-vote-item__number--k" id="k-count">0</span>
+            <!-- Bottom Row: Pie Chart + Widgets -->
+            <div class="content-bottom-row">
+                <!-- Pie Chart Area (left) -->
+                <div class="pie-area">
+                    <div class="overlay-pie-chart">
+                        <canvas id="pieChart" width="140" height="140"></canvas>
+                        <div class="overlay-timer" id="time-remaining">30s</div>
                     </div>
                 </div>
 
-                <div class="overlay-status" id="status">Waiting for votes...</div>
+                <!-- Info Panel View Grid (2x2) -->
+                <div class="widget-view-grid" id="view-grid">
+                    <div class="view-panel" data-panel="1">
+                        <span class="view-panel__number">1</span>
+                    </div>
+                    <div class="view-panel" data-panel="2">
+                        <span class="view-panel__number">2</span>
+                    </div>
+                    <div class="view-panel" data-panel="3">
+                        <span class="view-panel__number">3</span>
+                    </div>
+                    <div class="view-panel" data-panel="4">
+                        <span class="view-panel__number">4</span>
+                    </div>
+                </div>
+
+                <!-- Zoom Widget (distance + directional cooldowns) -->
+                <div class="widget-zoom" id="zoom-widget">
+                    <div class="zoom__distance" id="zoom-distance">0</div>
+                    <div class="zoom__cooldowns">
+                        <div class="zoom__cooldown zoom__cooldown--in">
+                            <span class="zoom__cooldown-label">+</span>
+                            <span class="zoom__cooldown-value" id="zoom-cooldown-in">0s</span>
+                        </div>
+                        <div class="zoom__cooldown zoom__cooldown--out">
+                            <span class="zoom__cooldown-label">-</span>
+                            <span class="zoom__cooldown-value" id="zoom-cooldown-out">0s</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Right sidebar (black dodge space) -->
+    <div class="sidebar-right"></div>
+</div>
+
+<!-- Footer Bar (full-width, outside 3-col layout) -->
+<div class="overlay-footer">
+    <span>Selection Protocol [dev]</span>
+    <span id="footer-date"></span>
 </div>

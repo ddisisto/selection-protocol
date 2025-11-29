@@ -6,6 +6,30 @@
  */
 
 /* ============================================================
+   3-COLUMN GRID LAYOUT (Black sidebars for in-game UI dodge)
+   ============================================================ */
+
+.overlay-3col-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr 1fr;
+    height: 100vh;
+    width: 100%;
+    padding-bottom: 30px;
+    box-sizing: border-box;
+}
+
+.sidebar-left,
+.sidebar-right {
+    background: var(--color-bg-primary);
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg-primary);
+}
+
+/* ============================================================
    OVERLAY LAYOUT
    ============================================================ */
 
@@ -14,6 +38,7 @@
     display: flex;
     flex-direction: column;
     background: var(--color-bg-primary);
+    padding: 0;
 }
 
 .overlay-title {
@@ -22,40 +47,210 @@
     justify-content: center;
     font-size: var(--font-size-xl);
     font-weight: var(--font-weight-black);
-    height: 120px;
-    padding: 0 var(--space-10) var(--space-3) var(--space-10);
+    height: 100px;
+    padding: 0 var(--space-10) var(--space-4) var(--space-10);
     color: var(--color-text-primary);
-    background: #808080;
+    background: linear-gradient(180deg, #606060 0%, #404040 100%);
     text-transform: uppercase;
     letter-spacing: var(--letter-spacing-wider);
-}
-
-.overlay-container {
-    margin-top: auto;
-    background: var(--color-bg-primary);
-    border: none;
-    border-radius: var(--radius-xl);
-    padding: var(--space-5) var(--space-6);
-    margin-left: var(--space-5);
-    margin-right: var(--space-5);
-    margin-bottom: var(--space-5);
+    flex-shrink: 0;
+    border-bottom: 2px solid var(--color-border);
 }
 
 /* ============================================================
-   MAIN LAYOUT (PIE + VOTES)
+   CONTENT SECTIONS (Command Log, Bottom Row, Footer)
    ============================================================ */
 
-.overlay-main-layout {
+.content-command-log {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--space-3);
+    margin: var(--space-5) var(--space-6) 0 var(--space-6);
+    border-radius: var(--radius-lg);
+    min-height: 150px;
+}
+
+.content-bottom-row {
     display: grid;
-    grid-template-columns: 150px 1fr;
+    grid-template-columns: 220px auto auto;
     gap: var(--space-6);
+    padding: var(--space-5) var(--space-6);
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.pie-area {
+    display: flex;
+    justify-content: center;
     align-items: center;
 }
 
-.overlay-right-section {
+
+/* ============================================================
+   OVERLAY FOOTER (full-width, static info)
+   ============================================================ */
+
+.overlay-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: var(--color-bg-tertiary);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-5);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    font-family: 'Courier New', 'Consolas', monospace;
+    z-index: 100;
+}
+
+/* ============================================================
+   COMMAND LOG ENTRIES
+   ============================================================ */
+
+#command-log-entries {
+    font-family: 'Courier New', 'Consolas', monospace;
+    font-size: var(--font-size-sm);
+}
+
+.cmd-entry {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: opacity 0.5s ease, font-size 0.5s ease;
+}
+
+.cmd-char {
+    width: 2ch;
+    text-align: center;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    flex-shrink: 0;
+}
+
+.cmd-username {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--color-text-secondary);
+}
+
+.cmd-rejected {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.cmd-rejected .cmd-char,
+.cmd-rejected .cmd-username {
+    color: var(--color-text-tertiary);
+}
+
+/* Command log aging animation (CSS-only, no JS timers) */
+.cmd-entry:nth-child(1) { opacity: 1.0; font-size: var(--font-size-sm); }
+.cmd-entry:nth-child(2) { opacity: 0.9; font-size: var(--font-size-sm); }
+.cmd-entry:nth-child(3) { opacity: 0.85; font-size: var(--font-size-xs); }
+.cmd-entry:nth-child(4) { opacity: 0.8; font-size: var(--font-size-xs); }
+.cmd-entry:nth-child(5) { opacity: 0.75; font-size: var(--font-size-xs); }
+.cmd-entry:nth-child(n+6) { opacity: 0.6; font-size: calc(var(--font-size-xs) * 0.9); }
+.cmd-entry:nth-child(n+11) { opacity: 0.4; font-size: calc(var(--font-size-xs) * 0.85); }
+.cmd-entry:nth-child(n+16) { opacity: 0.2; font-size: calc(var(--font-size-xs) * 0.8); }
+
+/* ============================================================
+   INFO PANEL VIEW GRID (2x2 widget)
+   ============================================================ */
+
+.widget-view-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: var(--space-2);
+    width: 120px;
+    height: 120px;
+}
+
+.view-panel {
+    background: var(--color-bg-primary);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-normal);
+    opacity: 0.5;
+}
+
+.view-panel__number {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-secondary);
+}
+
+.view-panel--active {
+    opacity: 1.0;
+    border-color: var(--color-accent);
+    background: var(--color-bg-elevated);
+}
+
+.view-panel--active .view-panel__number {
+    color: var(--color-accent);
+}
+
+/* ============================================================
+   ZOOM WIDGET (distance + directional cooldowns)
+   ============================================================ */
+
+.widget-zoom {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    height: 120px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    padding: var(--space-2);
+}
+
+.zoom__distance {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.zoom__cooldowns {
+    display: flex;
+    gap: var(--space-3);
+    width: 100%;
+    justify-content: center;
+}
+
+.zoom__cooldown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+.zoom__cooldown-label {
+    font-size: var(--font-size-xs);
+    color: var(--color-text-tertiary);
+    font-weight: var(--font-weight-bold);
+}
+
+.zoom__cooldown-value {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
 }
 
 /* ============================================================
@@ -96,131 +291,3 @@
     z-index: 10;
 }
 
-/* ============================================================
-   VOTE ITEMS (K/L/X cards)
-   ============================================================ */
-
-.overlay-votes-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-4);
-}
-
-.overlay-vote-item {
-    background: var(--color-bg-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    border: 2px solid transparent;
-    transition: border-color var(--transition-normal);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.overlay-vote-item--k {
-    border-color: var(--color-kill);
-}
-
-.overlay-vote-item--l {
-    border-color: var(--color-lay);
-}
-
-.overlay-vote-item--x {
-    border-color: var(--color-extend);
-}
-
-/* Vote Label */
-.overlay-vote-item__label {
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-bold);
-    text-transform: uppercase;
-    letter-spacing: var(--letter-spacing-wide);
-}
-
-.overlay-vote-item__label--k {
-    color: var(--color-kill-light);
-}
-
-.overlay-vote-item__label--l {
-    color: var(--color-lay-light);
-}
-
-.overlay-vote-item__label--x {
-    color: var(--color-extend-light);
-}
-
-/* Vote Number */
-.overlay-vote-item__number {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    position: relative;
-    display: inline-block;
-}
-
-.overlay-vote-item__number--k {
-    color: var(--color-kill-light);
-}
-
-.overlay-vote-item__number--l {
-    color: var(--color-lay-light);
-}
-
-.overlay-vote-item__number--x {
-    color: var(--color-extend-light);
-}
-
-/* Vote Claimant (first-L indicator) */
-.overlay-vote-item__claimant {
-    font-size: var(--font-size-xs);
-    color: var(--color-text-tertiary);
-    font-weight: var(--font-weight-normal);
-    font-style: italic;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-/* ============================================================
-   VOTE BARS (percentage indicators)
-   ============================================================ */
-
-.overlay-vote-bar-container {
-    height: 12px;
-    background: var(--color-bg-elevated);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-}
-
-.overlay-vote-bar {
-    height: 100%;
-    transition: width var(--transition-slow);
-    border-radius: var(--radius-md);
-}
-
-.overlay-vote-bar--k {
-    background: linear-gradient(90deg, var(--color-kill), var(--color-kill-light));
-}
-
-.overlay-vote-bar--l {
-    background: linear-gradient(90deg, var(--color-lay), var(--color-lay-light));
-}
-
-.overlay-vote-bar--x {
-    background: linear-gradient(90deg, var(--color-extend), var(--color-extend-light));
-}
-
-/* ============================================================
-   STATUS MESSAGE
-   ============================================================ */
-
-.overlay-status {
-    text-align: center;
-    font-size: var(--font-size-lg);
-    color: var(--color-text-primary);
-    background: var(--color-bg-elevated);
-    text-shadow: 2px 2px 4px #00FFFF;
-    margin-top: var(--space-3);
-    font-style: italic;
-}
