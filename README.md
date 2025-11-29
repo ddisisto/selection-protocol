@@ -83,6 +83,12 @@ python -m src.twitch_bot          # daemon mode (runs forever)
 # 5. Receives votes → sends to Flask → vote_manager tracks them
 ```
 
+**Troubleshooting:**
+- **First run:** Browser opens automatically for OAuth authorization (one-time setup)
+- **Token expiry:** Handled automatically via refresh mechanism
+- **"Token user mismatch" error:** Log out of Twitch in browser, log in as bot account (not channel owner), delete `.twitch_token`, re-run bot
+- **Other issues:** Check `config.yaml` has correct `client_id`/`client_secret` from https://dev.twitch.tv/console/apps
+
 ## Documentation
 
 - **[docs/](docs/)** - Voting rules, chat UX specs, setup guides
