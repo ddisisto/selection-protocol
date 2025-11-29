@@ -126,6 +126,61 @@ selection-protocol/
 
 ---
 
+## Development Workflow
+
+### Decompiling Game Code
+
+To explore game state structures or find new APIs:
+
+```bash
+# One-time setup: Install ILSpy CLI tool
+dotnet tool install -g ilspycmd
+
+# Decompile BibitesAssembly.dll to mod/decompiled/
+./decompile_dll.sh
+```
+
+**Output location:** `mod/decompiled/` (gitignored, not committed)
+
+**Key files decompiled:**
+- `ManagementScripts/TimeController.cs` - Pause state, simulation speed
+- `ManagementScripts/UserControl.cs` - Organism selection
+- `SimulationScripts/BibiteScripts/BibiteGenes.cs` - Genetics, tagging
+- `SimulationScripts/BibiteScripts/BibiteBody.cs` - Energy, health, state
+
+**Search tips:**
+```bash
+# Find all references to "pause"
+grep -r "pause" mod/decompiled/ -i
+
+# Find class by name
+find mod/decompiled/ -name "*Manager*.cs"
+
+# Search for public static fields (likely singletons)
+grep -r "public static.*Instance" mod/decompiled/
+```
+
+**Workflow:**
+1. Run `./decompile_dll.sh` when exploring new game features
+2. Search decompiled code for relevant structures
+3. Document findings (class names, field access, methods)
+4. Implement in mod using discovered APIs
+5. Re-run decompile script after game updates
+
+### Building and Deploying Mod
+
+```bash
+# Build + deploy to game directory
+./build_mod.sh
+
+# Manually test
+# 1. Restart The Bibites
+# 2. Check BepInEx log: cat ~/.steam/.../BepInEx/LogOutput.log
+# 3. Test API: curl http://localhost:5001/health
+```
+
+---
+
 ## Risk Assessment
 
 ### Acceptable Risks
