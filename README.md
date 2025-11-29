@@ -85,7 +85,6 @@ python -m src.twitch_bot          # daemon mode (runs forever)
 
 ## Documentation
 
-- **[PROJECT_BRIEF.md](PROJECT_BRIEF.md)** - Full technical specification
 - **[CONTEXT.md](CONTEXT.md)** - Development history and design decisions
 - **[docs/](docs/)** - Additional documentation
 
