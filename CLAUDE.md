@@ -195,12 +195,6 @@ if elapsed >= target_duration:
 
 ---
 
-## Philosophy & Design Decisions
-
-@CONTEXT.md
-
----
-
 ## Quick Reference
 
 ### Starting the System
@@ -239,7 +233,7 @@ python -m src.twitch_bot          # daemon
 - Test manually before abstracting
 - TodoWrite for complex tasks, parallel tool use for efficiency
 - Detailed commit messages with reasoning
-- Document decisions when made (issues, CONTEXT.md)
+- Document decisions when made (issues, commit messages)
 - Fail-fast validation > silent fallbacks
 
 **Avoid:**
