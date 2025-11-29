@@ -1,9 +1,6 @@
-# CLAUDE.md - AI Assistant Handover & Methodology
+# CLAUDE.md - Project Methodology
 
 **Purpose:** Fast context load + repeatable patterns for working on this codebase.
-
-**Last Updated:** 2025-11-22 (Session 5)
-**Sessions Completed:** 5
 
 ---
 
@@ -13,16 +10,34 @@
 Twitch streaming experiment where chat votes K/L/X (Kill/Lay/Extend) on organisms in [The Bibites](https://thebibites.com). First L voter claims lineage naming rights. Democracy meets evolution meets competitive dynasty building.
 
 **Current State:**
-Phase 1 essentially complete. Dynamic timer (30-120s), automated execution, vote display working. Ready for live testing and polish.
-
-**Full Context:**
 @README.md
 
 ---
 
-## How to Work on This Project
+## Issue-Driven Workflow
 
-### Core Values (User's Preferences)
+**Work management via GitHub Issues:**
+- Point at single issue to start session
+- Issue scope = session scope
+- Labels as system feedback (needs-discussion, blocked, ready, deferred)
+- Block early and often - create dependency chains, never work around
+
+**Creating good issues:**
+@.github/ISSUE_CREATION_GUIDE.md
+
+**Session flow:**
+1. `gh issue list` - See what's available
+2. Point at issue (any state: needs-discussion, blocked, ready)
+3. Assess state and branch:
+   - `needs-discussion` → Refine, break down, spec
+   - `blocked` → Work on blocker or create new dependency
+   - `ready` → Implement
+4. Reference issue in commits: `#N` or `Closes #N`
+5. Update issue with outcome (link commits/PRs)
+
+---
+
+## Core Values
 
 **Fail-Fast Philosophy:**
 - Strict validation, clear error messages
@@ -47,7 +62,9 @@ Phase 1 essentially complete. Dynamic timer (30-120s), automated execution, vote
 - It's the admin panel - user has full control
 - Cooldowns/delays are for viewer commands, not admin
 
-### Work Patterns That Succeed
+---
+
+## Work Patterns That Succeed
 
 **1. Use TodoWrite Proactively**
 - Create todos at start of complex tasks
@@ -65,7 +82,7 @@ Phase 1 essentially complete. Dynamic timer (30-120s), automated execution, vote
 ```
 Title: What changed (imperative, 50 chars)
 
-**Problem:** What issue this solves
+**Problem:** What issue this solves (reference #N)
 **Root Cause:** Why it happened (with file:line references)
 **Solution:** How we fixed it
 **Implementation:** Key changes (bullet points)
@@ -73,23 +90,21 @@ Title: What changed (imperative, 50 chars)
 
 Include code snippets showing before/after when useful.
 
+Closes #N (if applicable)
+
 🔥 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-**4. Documentation Workflow**
-- End of session: Add summary to HANDOVER.md
-- Archive: `HANDOVER.md` → `docs/archive/HANDOVER-SESSION-N.md`
-- Create fresh HANDOVER.md for next session
-- CLAUDE.md (this file) grows organically, captures patterns
-
-**5. Testing Approach**
+**4. Testing Approach**
 - Write code first
 - Test manually (user tests while server hot-reloads)
 - Iterate based on feedback
 - No premature abstraction - wait for patterns to emerge
 
-### Common Gotchas
+---
+
+## Common Gotchas
 
 **Linux/Proton Quirks:**
 - The Bibites runs via Steam/Proton (Wine layer)
@@ -108,7 +123,9 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - Switching back to L goes to back of queue (new timestamp)
 - Test with multiple accounts before trusting
 
-### User Communication Patterns
+---
+
+## User Communication Patterns
 
 **Effective:**
 - "I notice X, suspect Y, here's my proposed fix Z"
@@ -119,12 +136,6 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - "Great job!", "Perfect!", excessive enthusiasm
 - Long explanations without code/examples
 - Vague status updates without specifics
-
----
-
-## Current Session State
-
-@HANDOVER.md
 
 ---
 
@@ -217,77 +228,27 @@ python -m src.twitch_bot          # daemon
 - **Templates:** `src/templates/*.html`
 - **Static assets:** `src/static/*.{js,css}`
 - **Docs:** `docs/*.md`
-- **Archived handovers:** `docs/archive/HANDOVER-SESSION-*.md`
+- **Issues:** Track via `gh issue list` or GitHub web
 
 ---
 
-## Growth & Learning
-
-**Session-to-Session Patterns:**
-
-**Session 3:**
-- EventSub integration (IRC deprecated)
-- Vote manager foundation
-- End-to-end vote flow
-
-**Session 4:**
-- Server-authoritative refactor
-- Shannon entropy timer formula
-- Complete Phase 1 implementation
-
-**Session 5:**
-- CSS design system (600+ lines → DRY tokens)
-- Admin panel refactor (cooldowns removed)
-- Window auto-discovery
-- Elapsed-time timer (prevent indefinite delay)
-
-**Key Learnings:**
-- Start with simplest working solution
-- Refactor when duplication becomes obvious
-- Test manually before abstracting
-- Document decisions when made (CONTEXT.md)
-- Fail-fast > silent fallbacks
+## Key Learnings
 
 **What Works:**
-- TodoWrite for complex tasks
-- Detailed commit messages with context
-- Parallel tool use for efficiency
-- @includes for documentation (no duplication)
-- Archive handovers each session
+- Start with simplest working solution, refactor when duplication obvious
+- Test manually before abstracting
+- TodoWrite for complex tasks, parallel tool use for efficiency
+- Detailed commit messages with reasoning
+- Document decisions when made (issues, CONTEXT.md)
+- Fail-fast validation > silent fallbacks
 
 **Avoid:**
 - Premature abstraction
 - Hardcoded fallback values
 - Client-side state (server-authoritative)
+- Scope creep (create separate issues)
 - Cooldowns in admin panel
 - Emojis (unless requested)
-
----
-
-## Next Session Priorities
-
-See current HANDOVER.md for detailed next steps.
-
-Typically involves:
-1. Polish from previous session's testing
-2. Bug fixes discovered during use
-3. New feature implementation
-4. Documentation updates
-
----
-
-## Historical Context
-
-**Previous Sessions:**
-See `docs/archive/HANDOVER-SESSION-*.md` for session-by-session history.
-
-**Major Milestones:**
-- Session 0: Documentation & planning
-- Session 1: OAuth flow, foundation
-- Session 2: EventSub bot, vote manager
-- Session 3: End-to-end vote flow
-- Session 4: Server-authoritative, Phase 1 MVP
-- Session 5: Polish, CSS refactor, admin panel, window discovery
 
 ---
 
