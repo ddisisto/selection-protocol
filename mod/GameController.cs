@@ -1,4 +1,5 @@
 using System;
+using ManagementScripts;
 
 namespace SelectionProtocol
 {
@@ -17,18 +18,60 @@ namespace SelectionProtocol
         }
 
         /// <summary>
-        /// Check if game is ready for state access (singletons initialized).
+        /// Check if game is ready for state access (TimeController singleton initialized).
         /// </summary>
         public bool IsGameReady()
         {
-            // For now, always return true. Will add actual checks when accessing game state.
-            return true;
+            return TimeController.Instance != null;
+        }
+
+        /// <summary>
+        /// Get current pause state.
+        /// </summary>
+        /// <param name="callback">Called with pause state on main thread</param>
+        public void GetPauseState(Action<bool> callback)
+        {
+            EnqueueCommand(() =>
+            {
+                if (!IsGameReady())
+                {
+                    Plugin.Logger.LogWarning("GetPauseState: Game not ready");
+                    callback(false);
+                    return;
+                }
+
+                bool isPaused = TimeController.paused;
+                Plugin.Logger.LogInfo($"GetPauseState: {isPaused}");
+                callback(isPaused);
+            });
+        }
+
+        /// <summary>
+        /// Toggle pause state.
+        /// </summary>
+        /// <param name="callback">Called with new pause state on main thread</param>
+        public void TogglePause(Action<bool> callback)
+        {
+            EnqueueCommand(() =>
+            {
+                if (!IsGameReady())
+                {
+                    Plugin.Logger.LogError("TogglePause: Game not ready");
+                    callback(false);
+                    return;
+                }
+
+                TimeController.Instance.TogglePauseGame("selection-protocol");
+                bool newState = TimeController.paused;
+                Plugin.Logger.LogInfo($"TogglePause: {newState}");
+                callback(newState);
+            });
         }
 
         /// <summary>
         /// Queue a command to execute on Unity main thread.
         /// </summary>
-        protected void EnqueueCommand(Action command)
+        private void EnqueueCommand(Action command)
         {
             _enqueueCommand(command);
         }

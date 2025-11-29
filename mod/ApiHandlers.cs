@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Text;
+using System.Threading;
 
 namespace SelectionProtocol
 {
@@ -21,6 +22,70 @@ namespace SelectionProtocol
         {
             var json = "{\"status\":\"ok\",\"plugin\":\"" + PluginInfo.PLUGIN_VERSION + "\"}";
             SendJsonResponse(response, json, 200);
+        }
+
+        public void HandleGetPause(HttpListenerResponse response)
+        {
+            if (!_gameController.IsGameReady())
+            {
+                var errorJson = "{\"error\":\"Game not ready\"}";
+                SendJsonResponse(response, errorJson, 503);
+                return;
+            }
+
+            // Use ManualResetEvent to wait for callback from main thread
+            var resetEvent = new ManualResetEvent(false);
+            bool pauseState = false;
+
+            _gameController.GetPauseState(state =>
+            {
+                pauseState = state;
+                resetEvent.Set();
+            });
+
+            // Wait for main thread to execute command (timeout 5s)
+            if (resetEvent.WaitOne(5000))
+            {
+                var json = "{\"paused\":" + (pauseState ? "true" : "false") + "}";
+                SendJsonResponse(response, json, 200);
+            }
+            else
+            {
+                var errorJson = "{\"error\":\"Timeout waiting for game state\"}";
+                SendJsonResponse(response, errorJson, 504);
+            }
+        }
+
+        public void HandlePostPause(HttpListenerResponse response)
+        {
+            if (!_gameController.IsGameReady())
+            {
+                var errorJson = "{\"error\":\"Game not ready\"}";
+                SendJsonResponse(response, errorJson, 503);
+                return;
+            }
+
+            // Use ManualResetEvent to wait for callback from main thread
+            var resetEvent = new ManualResetEvent(false);
+            bool newPauseState = false;
+
+            _gameController.TogglePause(state =>
+            {
+                newPauseState = state;
+                resetEvent.Set();
+            });
+
+            // Wait for main thread to execute command (timeout 5s)
+            if (resetEvent.WaitOne(5000))
+            {
+                var json = "{\"paused\":" + (newPauseState ? "true" : "false") + "}";
+                SendJsonResponse(response, json, 200);
+            }
+            else
+            {
+                var errorJson = "{\"error\":\"Timeout waiting for pause toggle\"}";
+                SendJsonResponse(response, errorJson, 504);
+            }
         }
 
         public void Handle404(HttpListenerResponse response)

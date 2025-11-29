@@ -85,6 +85,14 @@ namespace SelectionProtocol
                 {
                     _handlers.HandleHealth(response);
                 }
+                else if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/game/pause")
+                {
+                    _handlers.HandleGetPause(response);
+                }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/game/pause")
+                {
+                    _handlers.HandlePostPause(response);
+                }
                 else
                 {
                     _handlers.Handle404(response);
