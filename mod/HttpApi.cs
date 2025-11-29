@@ -1,21 +1,24 @@
 using System;
-using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading;
 
 namespace SelectionProtocol
 {
+    /// <summary>
+    /// HTTP infrastructure layer. Manages listener lifecycle and routes requests to handlers.
+    /// </summary>
     public class HttpApi
     {
         private readonly HttpListener _listener;
         private readonly int _port;
+        private readonly ApiHandlers _handlers;
         private Thread _listenerThread;
         private volatile bool _running;
 
-        public HttpApi(int port)
+        public HttpApi(int port, ApiHandlers handlers)
         {
             _port = port;
+            _handlers = handlers;
             _listener = new HttpListener();
             _listener.Prefixes.Add($"http://localhost:{port}/");
         }
@@ -77,46 +80,19 @@ namespace SelectionProtocol
 
                 Plugin.Logger.LogInfo($"{request.HttpMethod} {request.Url.PathAndQuery}");
 
-                // Route handling
+                // Route to appropriate handler
                 if (request.HttpMethod == "GET" && request.Url.AbsolutePath == "/health")
                 {
-                    HandleHealth(response);
+                    _handlers.HandleHealth(response);
                 }
                 else
                 {
-                    Handle404(response);
+                    _handlers.Handle404(response);
                 }
             }
             catch (Exception ex)
             {
                 Plugin.Logger.LogError($"Request handling error: {ex.Message}");
-            }
-        }
-
-        private void HandleHealth(HttpListenerResponse response)
-        {
-            var json = "{\"status\":\"ok\",\"plugin\":\"" + PluginInfo.PLUGIN_VERSION + "\"}";
-            SendJsonResponse(response, json, 200);
-        }
-
-        private void Handle404(HttpListenerResponse response)
-        {
-            var json = "{\"error\":\"Not Found\"}";
-            SendJsonResponse(response, json, 404);
-        }
-
-        private void SendJsonResponse(HttpListenerResponse response, string json, int statusCode)
-        {
-            response.StatusCode = statusCode;
-            response.ContentType = "application/json";
-            response.ContentEncoding = Encoding.UTF8;
-
-            var bytes = Encoding.UTF8.GetBytes(json);
-            response.ContentLength64 = bytes.Length;
-
-            using (var output = response.OutputStream)
-            {
-                output.Write(bytes, 0, bytes.Length);
             }
         }
     }
