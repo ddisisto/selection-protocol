@@ -61,7 +61,8 @@ namespace SelectionProtocol
                     return;
                 }
 
-                TimeController.Instance.TogglePauseGame("selection-protocol");
+                // Use "base" source to match spacebar behavior (avoid conflicting pause sources)
+                TimeController.Instance.TogglePauseGame("base");
                 bool newState = TimeController.paused;
                 Plugin.Logger.LogInfo($"TogglePause: {newState}");
                 callback(newState);
