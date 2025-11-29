@@ -136,9 +136,8 @@ Timer Controls:
 ❌ Automated execution from votes
 ❌ Lineage tagging automation
 ❌ Vote display in overlay
-❌ Chat commands (!lineage, !stats)
 ```
-
+*UPDATE 2025-11-29* all above are working!
 ---
 
 ## The Voting Mechanics (Finalized)
@@ -146,7 +145,7 @@ Timer Controls:
 ### Rules
 1. **One person, one vote** - Latest replaces previous
 2. **First L gets naming rights** - Until they switch away
-3. **Ties trigger tie-break window** - 10s for single L to steal lineage
+3. **Ties trigger tie-break window** - 10s for single L to steal lineage (deferred)
 4. **Empty stream = extend** - Natural selection continues
 5. **Single voter = god** - 100% power regardless of population
 
@@ -182,84 +181,12 @@ Timer Controls:
 
 ---
 
-## Code Location (bibites-prediction repo)
-
-### Working Prototype
-```
-/home/daniel/prj/bibites-prediction/src/tools/twitch_overlay_server.py
-```
-
-**This file contains:**
-- Full overlay HTML/CSS/JS
-- Admin panel UI
-- WebSocket handlers for all admin actions
-- Cooldown system implementation
-- xdotool keypress automation
-- Vote state structure (ready for Twitch bot)
-
-**Size:** ~1200 lines (comprehensive but monolithic)
-
-### What Needs Porting
-1. **Overlay server** - Port to new repo, modularize
-2. **Admin panel** - Keep as testing interface
-3. **Cooldown system** - Already working perfectly
-4. **WebSocket infrastructure** - Extend for vote display
-5. **Keypress automation** - Already tested and reliable
-
----
-
 ## Development Environment
 
 ### System Info
 - OS: Linux Manjaro
 - Python: 3.13 in venv
 - Game: The Bibites via Steam/Proton
-- Game PID: 1377474
-- Window ID: 132120577
-
-### Dependencies (Already Installed in bibites-prediction)
-```
-flask==3.1.2
-flask-socketio==5.5.1
-pillow==12.0.0
-```
-
-### To Add
-```
-twitchio>=3.1.0
-```
-
----
-
-## Next Context Handover
-
-The next developer should:
-
-1. **Review this CONTEXT.md** - Understand the journey
-2. **Read PROJECT_BRIEF.md** - Get technical specs
-3. **Copy working overlay code** - Port from bibites-prediction
-4. **Modularize structure** - Break monolith into clean modules
-5. **Implement TwitchIO bot** - Phase 1 (vote display only)
-6. **Test vote mechanics** - Verify first-L claim logic
-7. **Add automated execution** - Phase 2 (votes → keypresses)
-8. **Implement lineage tagging** - Phase 3 (dynasties begin)
-
-### Critical Files to Understand
-- `PROJECT_BRIEF.md` - Full technical specification
-- `twitch_overlay_server.py` (in bibites-prediction) - Working prototype
-- `docs/twitch-plays-status.md` (in bibites-prediction) - Development history
-
-### Don't Reinvent
-- Cooldown system works perfectly
-- Admin panel UI is clean
-- xdotool automation is reliable
-- WebSocket sync is solid
-
-### Focus On
-- TwitchIO integration (the only missing piece)
-- Vote manager logic (first-L tracking)
-- Overlay vote display section
-- Lineage tagging automation
 
 ---
 
