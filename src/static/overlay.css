@@ -11,9 +11,11 @@
 
 .overlay-3col-grid {
     display: grid;
-    grid-template-columns: 1fr 4fr 1fr;
+    grid-template-columns: 1fr 1.2fr 1fr;
     height: 100vh;
     width: 100%;
+    padding-bottom: 30px;
+    box-sizing: border-box;
 }
 
 .sidebar-left,
@@ -63,7 +65,6 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    background: var(--color-bg-elevated);
     padding: var(--space-3);
     margin: var(--space-5) var(--space-6) 0 var(--space-6);
     border-radius: var(--radius-lg);
@@ -72,7 +73,7 @@
 
 .content-bottom-row {
     display: grid;
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 220px auto auto;
     gap: var(--space-6);
     padding: var(--space-5) var(--space-6);
     align-items: center;
@@ -85,41 +86,27 @@
     align-items: center;
 }
 
-.widgets-area {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    justify-content: center;
-    align-items: flex-start;
-}
 
-.content-footer-ticker {
-    height: 45px;
+/* ============================================================
+   OVERLAY FOOTER (full-width, static info)
+   ============================================================ */
+
+.overlay-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
     background: var(--color-bg-tertiary);
-    padding: var(--space-3) var(--space-6);
+    border-top: 1px solid var(--color-border);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-5);
-    flex-shrink: 0;
-    border-top: 1px solid var(--color-border);
-}
-
-.footer-message {
-    flex: 1;
-    font-size: var(--font-size-base);
-    color: var(--color-text-primary);
-    font-style: italic;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.footer-metadata {
-    flex-shrink: 0;
-    font-size: var(--font-size-sm);
+    padding: 0 var(--space-5);
+    font-size: var(--font-size-xs);
     color: var(--color-text-tertiary);
     font-family: 'Courier New', 'Consolas', monospace;
+    z-index: 100;
 }
 
 /* ============================================================
@@ -138,7 +125,6 @@
     padding: var(--space-1) var(--space-2);
     border-radius: var(--radius-sm);
     transition: opacity 0.5s ease, font-size 0.5s ease;
-    background: var(--color-bg-primary);
 }
 
 .cmd-char {
@@ -218,42 +204,51 @@
 }
 
 /* ============================================================
-   ZOOM DISK WIDGET (distance + cooldown)
+   ZOOM WIDGET (distance + directional cooldowns)
    ============================================================ */
 
-.widget-zoom-disk {
-    display: flex;
-    width: 120px;
-    height: 60px;
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--color-bg-primary);
-}
-
-.zoom-disk__half {
-    flex: 1;
+.widget-zoom {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    width: 120px;
+    height: 120px;
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-primary);
+    padding: var(--space-2);
+}
+
+.zoom__distance {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.zoom__cooldowns {
+    display: flex;
+    gap: var(--space-3);
+    width: 100%;
+    justify-content: center;
+}
+
+.zoom__cooldown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: var(--space-1);
 }
 
-.zoom-disk__left {
-    border-right: 1px solid var(--color-border);
-}
-
-.zoom-disk__label {
+.zoom__cooldown-label {
     font-size: var(--font-size-xs);
     color: var(--color-text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: var(--letter-spacing-wide);
+    font-weight: var(--font-weight-bold);
 }
 
-.zoom-disk__value,
-.zoom-disk__timer {
-    font-size: var(--font-size-lg);
+.zoom__cooldown-value {
+    font-size: var(--font-size-sm);
     font-weight: var(--font-weight-bold);
     color: var(--color-text-primary);
 }

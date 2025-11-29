@@ -31,46 +31,46 @@
                     </div>
                 </div>
 
-                <!-- Widgets Area (right: view grid + zoom disk) -->
-                <div class="widgets-area">
-                    <!-- Info Panel View Grid (2x2) -->
-                    <div class="widget-view-grid" id="view-grid">
-                        <div class="view-panel" data-panel="1">
-                            <span class="view-panel__number">1</span>
-                        </div>
-                        <div class="view-panel" data-panel="2">
-                            <span class="view-panel__number">2</span>
-                        </div>
-                        <div class="view-panel" data-panel="3">
-                            <span class="view-panel__number">3</span>
-                        </div>
-                        <div class="view-panel" data-panel="4">
-                            <span class="view-panel__number">4</span>
-                        </div>
+                <!-- Info Panel View Grid (2x2) -->
+                <div class="widget-view-grid" id="view-grid">
+                    <div class="view-panel" data-panel="1">
+                        <span class="view-panel__number">1</span>
                     </div>
+                    <div class="view-panel" data-panel="2">
+                        <span class="view-panel__number">2</span>
+                    </div>
+                    <div class="view-panel" data-panel="3">
+                        <span class="view-panel__number">3</span>
+                    </div>
+                    <div class="view-panel" data-panel="4">
+                        <span class="view-panel__number">4</span>
+                    </div>
+                </div>
 
-                    <!-- Zoom Disk (distance + cooldown) -->
-                    <div class="widget-zoom-disk" id="zoom-disk">
-                        <div class="zoom-disk__half zoom-disk__left">
-                            <span class="zoom-disk__label">Dist</span>
-                            <span class="zoom-disk__value" id="zoom-distance">0</span>
+                <!-- Zoom Widget (distance + directional cooldowns) -->
+                <div class="widget-zoom" id="zoom-widget">
+                    <div class="zoom__distance" id="zoom-distance">0</div>
+                    <div class="zoom__cooldowns">
+                        <div class="zoom__cooldown zoom__cooldown--in">
+                            <span class="zoom__cooldown-label">+</span>
+                            <span class="zoom__cooldown-value" id="zoom-cooldown-in">0s</span>
                         </div>
-                        <div class="zoom-disk__half zoom-disk__right">
-                            <span class="zoom-disk__label">CD</span>
-                            <span class="zoom-disk__timer" id="zoom-cooldown">0s</span>
+                        <div class="zoom__cooldown zoom__cooldown--out">
+                            <span class="zoom__cooldown-label">-</span>
+                            <span class="zoom__cooldown-value" id="zoom-cooldown-out">0s</span>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Footer Ticker (status/announcements) -->
-            <div class="content-footer-ticker">
-                <span id="footer-message" class="footer-message">Waiting for votes...</span>
-                <span id="footer-metadata" class="footer-metadata"></span>
             </div>
         </div>
     </div>
 
     <!-- Right sidebar (black dodge space) -->
     <div class="sidebar-right"></div>
+</div>
+
+<!-- Footer Bar (full-width, outside 3-col layout) -->
+<div class="overlay-footer">
+    <span>Selection Protocol [dev]</span>
+    <span id="footer-date"></span>
 </div>

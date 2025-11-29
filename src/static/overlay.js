@@ -183,15 +183,6 @@ socket.on('vote_update', function(data) {
         }
     }
 
-    // Update footer metadata (vote counts + timer)
-    const metaEl = document.getElementById('footer-metadata');
-    if (metaEl) {
-        if (data.time_remaining !== null && data.time_remaining !== undefined) {
-            metaEl.textContent = `K:${data.k_votes} L:${data.l_votes} X:${data.x_votes} | ${data.time_remaining}s`;
-        } else {
-            metaEl.textContent = `K:${data.k_votes} L:${data.l_votes} X:${data.x_votes}`;
-        }
-    }
 });
 
 // Game state listener (info panels + zoom)
@@ -229,21 +220,30 @@ socket.on('game_state_update', function(data) {
         }
     }
 
-    // Update zoom cooldown (show min of both directions)
+    // Update zoom cooldowns (both directions separately)
     if (data.zoom && data.zoom.cooldowns !== undefined) {
-        const cooldownEl = document.getElementById('zoom-cooldown');
-        if (cooldownEl) {
-            const cooldowns = data.zoom.cooldowns; // {in: 1.0, out: 7.3}
+        const cooldowns = data.zoom.cooldowns; // {in: 1.0, out: 7.3}
 
-            // Show shortest cooldown (most permissive direction)
-            const minCooldown = Math.min(cooldowns.in, cooldowns.out);
+        const cooldownInEl = document.getElementById('zoom-cooldown-in');
+        const cooldownOutEl = document.getElementById('zoom-cooldown-out');
 
-            if (minCooldown > 0) {
-                cooldownEl.textContent = minCooldown.toFixed(1) + 's';
-                cooldownEl.style.color = '#ffaa00'; // Yellow-orange (cooling down)
+        if (cooldownInEl) {
+            if (cooldowns.in > 0) {
+                cooldownInEl.textContent = cooldowns.in.toFixed(1) + 's';
+                cooldownInEl.style.color = '#ffaa00'; // Yellow-orange (cooling down)
             } else {
-                cooldownEl.textContent = 'Ready';
-                cooldownEl.style.color = '#00ff88'; // Green (ready)
+                cooldownInEl.textContent = 'Ready';
+                cooldownInEl.style.color = '#00ff88'; // Green (ready)
+            }
+        }
+
+        if (cooldownOutEl) {
+            if (cooldowns.out > 0) {
+                cooldownOutEl.textContent = cooldowns.out.toFixed(1) + 's';
+                cooldownOutEl.style.color = '#ffaa00'; // Yellow-orange (cooling down)
+            } else {
+                cooldownOutEl.textContent = 'Ready';
+                cooldownOutEl.style.color = '#00ff88'; // Green (ready)
             }
         }
     }
@@ -278,38 +278,13 @@ socket.on('command_logged', function(data) {
     }
 });
 
-// Round lifecycle listeners
-socket.on('round_start', function(data) {
-    const msg = document.getElementById('footer-message');
-    if (msg) {
-        const vote = data.vote.toUpperCase();
-        const color = vote === 'K' ? '#ff6666' : '#6666ff';
-        msg.innerHTML = `Round started by <span style="color: ${color}">${data.username}</span> (${vote})`;
-    }
-});
-
-socket.on('round_end', function(data) {
-    const msg = document.getElementById('footer-message');
-    if (msg) {
-        const winner = data.winner.toUpperCase();
-
-        let text = '';
-        let color = '';
-        if (winner === 'K') {
-            text = 'Kill executed';
-            color = '#ff6666';
-        } else if (winner === 'L') {
-            const claimant = data.first_l_claimant || 'Unknown';
-            text = `Lay executed (${claimant})`;
-            color = '#6666ff';
-        } else {
-            text = 'Extended (no action)';
-            color = '#00ff88';
-        }
-
-        msg.innerHTML = `<span style="color: ${color}">${text}</span>`;
-    }
-});
+// Populate footer date
+const footerDateEl = document.getElementById('footer-date');
+if (footerDateEl) {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    footerDateEl.textContent = dateStr;
+}
 
 // Initial draw
 drawPieChart(0, 0, 0);
