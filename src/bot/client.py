@@ -14,6 +14,7 @@ import sys
 
 from .parser import parse_chat_input
 from .logging import log_chat_input
+from ..oauth_flow import refresh_access_token, save_token_cache
 
 
 class ChatInputBot(commands.AutoBot):
@@ -55,6 +56,7 @@ class ChatInputBot(commands.AutoBot):
         self.messages_received = 0
         # Store for chat message sending and filtering
         self._client_id = client_id
+        self._client_secret = client_secret
         self._access_token = access_token
         self._bot_username = bot_username.lower()
         self._flask_url = flask_url
@@ -189,38 +191,75 @@ class ChatInputBot(commands.AutoBot):
         Returns:
             bool: True if sent successfully, False otherwise
         """
-        try:
-            # Prefix message with colored announcement command
-            colored_message = f"/announce{color} {message}"
+        # Prefix message with colored announcement command
+        colored_message = f"/announce{color} {message}"
 
-            url = "https://api.twitch.tv/helix/chat/messages"
-            headers = {
-                "Client-ID": self._client_id,
-                "Authorization": f"Bearer {self._access_token}",
-                "Content-Type": "application/json"
-            }
-            data = {
-                "broadcaster_id": self.channel_id,
-                "sender_id": self.bot_id,
-                "message": colored_message
-            }
+        url = "https://api.twitch.tv/helix/chat/messages"
 
-            response = requests.post(url, headers=headers, json=data)
-            response.raise_for_status()
-            return True
+        for attempt in range(2):  # Try once, retry once if 401
+            try:
+                headers = {
+                    "Client-ID": self._client_id,
+                    "Authorization": f"Bearer {self._access_token}",
+                    "Content-Type": "application/json"
+                }
+                data = {
+                    "broadcaster_id": self.channel_id,
+                    "sender_id": self.bot_id,
+                    "message": colored_message
+                }
 
-        except requests.exceptions.HTTPError as e:
-            print(f"⚠ Failed to send chat message: HTTP {e.response.status_code}")
-            print(f"  URL: {url}")
-            print(f"  Response body: {e.response.text}")
-            print(f"  Headers used:")
-            print(f"    Client-ID: {self._client_id[:10]}...")
-            print(f"    Bot ID: {self.bot_id}")
-            print(f"    Channel ID: {self.channel_id}")
-            return False
-        except Exception as e:
-            print(f"⚠ Failed to send chat message: {type(e).__name__}: {e}")
-            return False
+                response = requests.post(url, headers=headers, json=data)
+                response.raise_for_status()
+                return True
+
+            except requests.exceptions.HTTPError as e:
+                # Handle 401 Unauthorized - token expired
+                if e.response.status_code == 401 and attempt == 0:
+                    print(f"⚠ Token expired (HTTP 401), attempting refresh...")
+
+                    # Attempt token refresh
+                    from ..oauth_flow import get_cached_token
+                    cached = get_cached_token()
+
+                    if cached and 'refresh_token' in cached:
+                        new_access, new_refresh = refresh_access_token(
+                            self._client_id,
+                            self._client_secret,
+                            cached['refresh_token']
+                        )
+
+                        if new_access:
+                            # Update token and save to cache
+                            self._access_token = new_access
+                            save_token_cache(
+                                new_access,
+                                new_refresh or cached['refresh_token'],
+                                cached.get('expires_in', 14400)
+                            )
+                            print(f"✓ Token refreshed, retrying send...")
+                            continue  # Retry with new token
+                        else:
+                            print(f"✗ Token refresh failed")
+                    else:
+                        print(f"✗ No refresh token in cache")
+
+                # Log error details
+                print(f"⚠ Failed to send chat message: HTTP {e.response.status_code}")
+                print(f"  URL: {url}")
+                print(f"  Response body: {e.response.text}")
+                print(f"  Headers used:")
+                print(f"    Client-ID: {self._client_id[:10]}...")
+                print(f"    Bot ID: {self.bot_id}")
+                print(f"    Channel ID: {self.channel_id}")
+                return False
+
+            except Exception as e:
+                print(f"⚠ Failed to send chat message: {type(e).__name__}: {e}")
+                return False
+
+        # Should not reach here, but just in case
+        return False
 
     def _register_server_events(self):
         """
