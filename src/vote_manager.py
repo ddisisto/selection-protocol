@@ -8,7 +8,7 @@ and broadcasts state updates to overlay via SocketIO.
 from datetime import datetime
 from math import log2
 from .actions import ACTIONS, is_valid_action
-from .game_controller import send_keypress, apply_lineage_tag, TagVerificationError
+from .mod_client import get_mod_client, ModError
 
 
 class VoteManager:
@@ -22,17 +22,15 @@ class VoteManager:
     - Switching back to L = new timestamp (back of queue)
     """
 
-    def __init__(self, socketio, game_state=None, log_action=None):
+    def __init__(self, socketio, log_action=None):
         """
         Initialize vote manager.
 
         Args:
             socketio: Flask-SocketIO instance for broadcasting
-            game_state: GameState instance (for lineage tagging context)
             log_action: Optional logging function for admin panel
         """
         self.socketio = socketio
-        self.game_state = game_state
         self.log_action = log_action or (lambda *args: None)
 
         # Vote tracking
@@ -326,60 +324,45 @@ class VoteManager:
 
     def _execute_winner(self):
         """
-        Execute the winning action and reset for next round.
+        Execute the winning action via mod API and reset for next round.
 
         Called when timer expires.
-        Determines winner, sends keypress if K or L, resets votes.
+        Determines winner, executes via mod_client, resets votes.
         Emits round_end event for chat announcement.
         """
         winner = self.get_winner()
         counts = self.get_vote_counts()
+        mod = get_mod_client()
 
-        if winner == 'k':
-            self.log_action("Winner: K", "Sending Delete keypress")
-            result = send_keypress('Delete', self.log_action)
-            if result['success']:
-                print("✓ EXECUTED: Delete keypress (K wins)")
-            else:
-                print(f"✗ FAILED: Delete keypress - {result.get('error', 'Unknown error')}")
-            
-            # send_keypress('ctrl+r', self.log_action)
-        
-        elif winner == 'l':
-            claimant = self.first_l_claimant or "Unknown"
+        try:
+            if winner == 'k':
+                self.log_action("Winner: K", "Executing kill via mod API")
+                result = mod.kill_target()
+                if result.success:
+                    print("✓ EXECUTED: Kill (K wins)")
+                else:
+                    print(f"✗ FAILED: Kill - {result.message}")
+                    self.log_action("Kill FAILED", result.message or "Unknown error")
 
-            # TODO: Refactor all game actions through game_controller pattern
-            # For now, lineage tagging uses new context manager pattern
-            if claimant and self.game_state:
-                try:
-                    apply_lineage_tag(
-                        username=claimant,
-                        game_state=self.game_state,
-                        log_func=self.log_action
-                    )
-                    print(f"✓ TAGGED: Lineage tagged with '{claimant}'")
-                except TagVerificationError as e:
-                    self.log_action("Tag verification FAILED", str(e))
-                    print(f"✗ TAG FAILED: {e}")
-                    # Continue anyway (fail-open pattern)
-                except Exception as e:
-                    self.log_action("Tagging error", str(e))
-                    print(f"✗ TAGGING ERROR: {e}")
-                    # Continue anyway
+            elif winner == 'l':
+                claimant = self.first_l_claimant or "Unknown"
+                self.log_action("Winner: L", f"Executing lay via mod API (tagged: {claimant})")
+                result = mod.lay_target(lineage_tag=claimant)
+                if result.success:
+                    print(f"✓ EXECUTED: Lay (L wins, claimant: {claimant})")
+                else:
+                    print(f"✗ FAILED: Lay - {result.message}")
+                    self.log_action("Lay FAILED", result.message or "Unknown error")
 
-            # Execute L action (old pattern for now)
-            self.log_action("Winner: L", f"Sending Insert keypress (Claimant: {claimant})")
-            result = send_keypress('Insert', self.log_action)
-            if result['success']:
-                print(f"✓ EXECUTED: Insert keypress (L wins, claimant: {claimant})")
-            else:
-                print(f"✗ FAILED: Insert keypress - {result.get('error', 'Unknown error')}")
-            
-            # send_keypress('ctrl+r', self.log_action)
-        else:
-            # X wins or tie
-            self.log_action("Winner: X", "No action (extend)")
-            print("→ No action (X wins)")
+            else:  # winner == 'x'
+                self.log_action("Winner: X", "Extend (no action)")
+                result = mod.extend_target()
+                print("→ EXECUTED: Extend (X wins)")
+
+        except ModError as e:
+            self.log_action("Mod error", str(e))
+            print(f"✗ MOD ERROR: {e}")
+            # Fail-open: log and continue
 
         # Emit round_end event for chat announcement (before reset)
         self.socketio.emit('round_end', {
@@ -566,22 +549,29 @@ class VoteManager:
             action: Action code ('k', 'l', or 'x')
         """
         self.log_action(f"FORCE EXECUTE: {action.upper()}", "Admin override")
+        mod = get_mod_client()
 
-        if action == 'k':
-            result = send_keypress('Delete', self.log_action)
-            if result['success']:
-                print("✓ FORCE EXECUTED: Delete keypress (admin K)")
-            else:
-                print(f"✗ FAILED: Delete keypress - {result.get('error', 'Unknown error')}")
-        elif action == 'l':
-            claimant = self.first_l_claimant or "Unknown"
-            result = send_keypress('Insert', self.log_action)
-            if result['success']:
-                print(f"✓ FORCE EXECUTED: Insert keypress (admin L, claimant: {claimant})")
-            else:
-                print(f"✗ FAILED: Insert keypress - {result.get('error', 'Unknown error')}")
-        else:  # action == 'x'
-            print("→ FORCE EXECUTED: No action (admin X)")
+        try:
+            if action == 'k':
+                result = mod.kill_target()
+                if result.success:
+                    print("✓ FORCE EXECUTED: Kill (admin K)")
+                else:
+                    print(f"✗ FAILED: Kill - {result.message}")
+            elif action == 'l':
+                claimant = self.first_l_claimant or "Unknown"
+                result = mod.lay_target(lineage_tag=claimant)
+                if result.success:
+                    print(f"✓ FORCE EXECUTED: Lay (admin L, claimant: {claimant})")
+                else:
+                    print(f"✗ FAILED: Lay - {result.message}")
+            else:  # action == 'x'
+                result = mod.extend_target()
+                print("→ FORCE EXECUTED: Extend (admin X)")
+
+        except ModError as e:
+            self.log_action("Mod error", str(e))
+            print(f"✗ MOD ERROR: {e}")
 
         # Reset for next round
         self.reset_votes()

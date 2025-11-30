@@ -18,6 +18,7 @@ from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
 from .game_state import GameState
 from .game_controller import discover_game_window, set_game_window_id, send_keypress
+from .mod_client import get_mod_client, ModUnavailableError
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -54,12 +55,10 @@ def log_action(action, details=""):
 
 
 # Initialize game state (owns command state, cooldowns, tracking)
-# Must be created first so vote_manager can use it for tagging context
 game_state = GameState(socketio)
 
 # Initialize vote manager (owns vote state)
-# Pass game_state for lineage tagging context
-vote_manager = VoteManager(socketio, game_state, log_action)
+vote_manager = VoteManager(socketio, log_action)
 
 # Setup WebSocket handlers
 broadcast_states = setup_socketio_handlers(socketio, admin_state, log_action, vote_manager, game_state)
@@ -198,10 +197,28 @@ if __name__ == '__main__':
     print("Selection Protocol - Overlay Server")
     print("=" * 60)
 
-    # Auto-discover game window (fail fast if not found)
+    # Verify mod API connection (fail fast if not available)
     try:
+        print("\nVerifying mod API connection...")
+        mod = get_mod_client()
+        print("✓ Mod API connected")
+    except ModUnavailableError as e:
+        print(f"\n✗ ERROR: {e}")
+        print("\nServer startup aborted. Please ensure:")
+        print("  1. The Bibites is running")
+        print("  2. BepInEx mod is loaded")
+        print("  3. Mod API is listening on http://localhost:5001")
+        print("\n")
+        exit(1)
+
+    # Auto-discover game window (fail fast if not found)
+    # NOTE: This is still used by game_state for zoom/panel commands
+    # Will be removed in future issue when those migrate to mod API
+    try:
+        print("\nDiscovering game window...")
         window_id = discover_game_window()
         set_game_window_id(window_id)
+        print(f"✓ Game window discovered (ID: {window_id})")
     except RuntimeError as e:
         print(f"\n✗ ERROR: {e}")
         print("\nServer startup aborted. Please fix the issue and try again.\n")
