@@ -17,8 +17,7 @@ from datetime import datetime
 from .websocket import setup_socketio_handlers
 from .vote_manager import VoteManager
 from .game_state import GameState
-from .game_controller import discover_game_window, set_game_window_id, send_keypress
-from .mod_client import get_mod_client, ModUnavailableError
+from .mod_client import get_mod_client, ModUnavailableError, ModError
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -163,17 +162,21 @@ def handle_chat_input(data):
     if chat_input in ['+', '-', '0', '1', '2', '3', '4']:
         result = game_state.handle_command(chat_input, username, cause='chat')
 
-        # Execute keypress(es) if command was accepted
+        # Execute mod API action if command was accepted
         if result['accepted']:
-            keypresses = result['keypress']
-            if not isinstance(keypresses, list):
-                keypresses = [keypresses]
-
-            # Send each keypress sequentially (for multi-step commands)
-            for keypress in keypresses:
-                exec_result = send_keypress(keypress, log_action)
-                if not exec_result['success']:
-                    log_action(f"Game command FAILED: {chat_input}", f"From {username} - {exec_result.get('error', 'Unknown')}")
+            mod_action = result.get('mod_action')
+            if mod_action:
+                try:
+                    mod = get_mod_client()
+                    if mod_action == 'zoom_in':
+                        mod.zoom('in')
+                    elif mod_action == 'zoom_out':
+                        mod.zoom('out')
+                    elif mod_action.startswith('panel_'):
+                        panel = int(mod_action.split('_')[1])
+                        mod.set_info_panel(panel)
+                except ModError as e:
+                    log_action(f"Game command FAILED: {chat_input}", f"From {username} - {e}")
 
         return {
             'accepted': result['accepted'],
@@ -209,19 +212,6 @@ if __name__ == '__main__':
         print("  2. BepInEx mod is loaded")
         print("  3. Mod API is listening on http://localhost:5001")
         print("\n")
-        exit(1)
-
-    # Auto-discover game window (fail fast if not found)
-    # NOTE: This is still used by game_state for zoom/panel commands
-    # Will be removed in future issue when those migrate to mod API
-    try:
-        print("\nDiscovering game window...")
-        window_id = discover_game_window()
-        set_game_window_id(window_id)
-        print(f"✓ Game window discovered (ID: {window_id})")
-    except RuntimeError as e:
-        print(f"\n✗ ERROR: {e}")
-        print("\nServer startup aborted. Please fix the issue and try again.\n")
         exit(1)
 
     print("\nOverlay URL: http://localhost:5000")

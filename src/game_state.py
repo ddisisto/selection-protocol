@@ -236,7 +236,7 @@ class ZoomTracker(CommandBase):
             return {
                 'accepted': False,
                 'reason': reason,
-                'keypress': None,
+                'mod_action': None,
                 'cooldown_remaining': self.time_remaining(direction) if reason == 'cooldown' else 0.0,
                 'distance': self.distance_from_initial
             }
@@ -245,10 +245,10 @@ class ZoomTracker(CommandBase):
         self.previous_distance = self.distance_from_initial
         if direction == '+':
             self.distance_from_initial += 1
-            keypress = 'KP_Add'
+            mod_action = 'zoom_in'
         else:  # direction == '-'
             self.distance_from_initial -= 1
-            keypress = 'KP_Subtract'
+            mod_action = 'zoom_out'
 
         # Record execution
         self._record_execution(user, cause)
@@ -264,7 +264,7 @@ class ZoomTracker(CommandBase):
         return {
             'accepted': True,
             'reason': 'executed',
-            'keypress': keypress,
+            'mod_action': mod_action,
             'cooldown_remaining': 0.0,
             'distance': self.distance_from_initial
         }
@@ -375,7 +375,7 @@ class InfoPanelGroup(CommandBase):
                 return {
                     'accepted': False,
                     'reason': 'cooldown',
-                    'keypress': None,
+                    'mod_action': None,
                     'cooldown_remaining': self.time_remaining()
                 }
 
@@ -390,7 +390,7 @@ class InfoPanelGroup(CommandBase):
                 return {
                     'accepted': False,
                     'reason': 'already_hidden',
-                    'keypress': None,
+                    'mod_action': None,
                     'cooldown_remaining': 0.0
                 }
 
@@ -402,33 +402,22 @@ class InfoPanelGroup(CommandBase):
             return {
                 'accepted': True,
                 'reason': 'executed',
-                'keypress': 'h',  # Send hide keypress
+                'mod_action': 'panel_0',
                 'cooldown_remaining': 0.0
             }
 
         # Handle 1-4 commands (show panel)
         if value in ['1', '2', '3', '4']:
-            keypresses = []
-
-            # If hidden, need to show UI first
-            if is_hidden:
-                keypresses.append('h')  # Unhide
-
-                # Then send number only if different from last_non_zero
-                if value != self.last_non_zero:
-                    keypresses.append(value)
-            else:
-                # Already visible, send number only if different from current
-                if value == self.current:
-                    self._record_rejection(user)
-                    return {
-                        'accepted': False,
-                        'reason': 'already_selected',
-                        'keypress': None,
-                        'cooldown_remaining': 0.0
-                    }
-
-                keypresses.append(value)
+            # Mod API handles panel switching directly - no multi-step needed
+            # Already selected check
+            if not is_hidden and value == self.current:
+                self._record_rejection(user)
+                return {
+                    'accepted': False,
+                    'reason': 'already_selected',
+                    'mod_action': None,
+                    'cooldown_remaining': 0.0
+                }
 
             # Update state
             self.previous = self.current
@@ -436,11 +425,10 @@ class InfoPanelGroup(CommandBase):
             self.last_non_zero = value
             self._record_execution(user, cause)
 
-            # Return single keypress or list
             return {
                 'accepted': True,
                 'reason': 'executed',
-                'keypress': keypresses[0] if len(keypresses) == 1 else keypresses,
+                'mod_action': f'panel_{value}',
                 'cooldown_remaining': 0.0
             }
 
@@ -448,7 +436,7 @@ class InfoPanelGroup(CommandBase):
         return {
             'accepted': False,
             'reason': 'invalid_value',
-            'keypress': None,
+            'mod_action': None,
             'cooldown_remaining': 0.0
         }
 
@@ -582,7 +570,7 @@ class GameState:
             return {
                 'accepted': False,
                 'reason': 'invalid_command',
-                'keypress': None,
+                'mod_action': None,
                 'cooldown_remaining': 0.0
             }
 
