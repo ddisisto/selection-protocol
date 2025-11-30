@@ -89,19 +89,13 @@ def handle_first_connect():
 
 @app.route('/')
 def index():
-    """Serve the combined admin + overlay page."""
+    """Serve the overlay page."""
     return render_template('index.html')
-
-
-@app.route('/admin')
-def admin():
-    """Serve the admin panel only (for split deployment)."""
-    return render_template('admin_only.html')
 
 
 @app.route('/overlay')
 def overlay():
-    """Serve the overlay only (for OBS Browser Source)."""
+    """Serve the overlay (alias for root, OBS compatibility)."""
     return render_template('overlay_only.html')
 
 

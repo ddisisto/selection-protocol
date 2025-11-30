@@ -1,18 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Selection Protocol - Overlay + Admin{% endblock %}
+{% block title %}Selection Protocol - Overlay{% endblock %}
 
 {% block stylesheets %}
-<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='overlay.css') }}">
 {% endblock %}
 
 {% block content %}
-{% include "admin_panel.html" %}
 {% include "overlay.html" %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='overlay.js') }}"></script>
-<script src="{{ url_for('static', filename='admin.js') }}"></script>
 {% endblock %}
