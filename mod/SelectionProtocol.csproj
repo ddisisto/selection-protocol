@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>SelectionProtocol</AssemblyName>
+    <Product>Selection Protocol BepInEx Plugin</Product>
+    <Version>0.1.0</Version>
+    <Authors>Daniel + Claude</Authors>
+  </PropertyGroup>
+
+  <!-- BepInEx Dependencies (Direct DLL References) -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/BepInEx/core/BepInEx.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/BepInEx/core/0Harmony.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Game Assembly References -->
+  <ItemGroup>
+    <Reference Include="BibitesAssembly">
+      <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/The Bibites_Data/Managed/BibitesAssembly.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/The Bibites_Data/Managed/UnityEngine.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/The Bibites_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Build Output Configuration -->
+  <PropertyGroup>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- Exclude decompiled game code from compilation (reference only) -->
+  <ItemGroup>
+    <Compile Remove="decompiled/**/*.cs" />
+  </ItemGroup>
+
+</Project>
