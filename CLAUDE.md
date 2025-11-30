@@ -51,11 +51,6 @@ See @CONTRIBUTING.md for full workflow standards:
 - No unnecessary praise or emojis (unless explicitly requested)
 - Focus on facts and problem-solving
 
-**Direct & Immediate (Admin Panel):**
-- Admin actions should be instant (no cooldowns, no delays)
-- It's the admin panel - user has full control
-- Cooldowns/delays are for viewer commands, not admin
-
 ---
 
 ## Work Patterns That Succeed
@@ -91,26 +86,12 @@ See @CONTRIBUTING.md for full commit standards and examples.
 - Iterate based on feedback
 - No premature abstraction - wait for patterns to emerge
 
----
-
-## Common Gotchas
-
-**Linux/Proton Quirks:**
-- The Bibites runs via Steam/Proton (Wine layer)
-- Window ID changes on game restart
-- Auto-discovery handles this (searches by name)
-
-**Timer System:**
-- Elapsed-time based (wall clock immutable)
-- `time_remaining = target - elapsed`
-- New votes change target, but can't "undo" elapsed time
-- Prevents indefinite delay
-
-**First-L Claimant Logic:**
-- First L voter by timestamp gets claim
-- Switching away from L loses claim
-- Switching back to L goes to back of queue (new timestamp)
-- Test with multiple accounts before trusting
+**5. Agent-Driven Workflow (Optional)**
+- For complex, well-scoped work with deep alignment established
+- See [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md) for full pattern
+- Main session coordinates, agents execute implementation
+- Use when: 3+ files, clear scope, context budget >60%
+- Don't use when: trivial task, fuzzy exploration, `needs-discussion` active
 
 ---
 
@@ -130,13 +111,20 @@ See @CONTRIBUTING.md for full commit standards and examples.
 
 ## System Architecture
 
-**Key Components:**
+**Python Layer:**
 - **Flask Server** ([src/server.py](src/server.py)) - Main entry, routes, background timer
 - **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking, timer logic, execution
-- **Game Controller** ([src/game_controller.py](src/game_controller.py)) - Window discovery, xdotool keypresses
+- **Mod Client** ([src/mod_client.py](src/mod_client.py)) - HTTP client for BepInEx mod API
+- **Game State** ([src/game_state.py](src/game_state.py)) - Command cooldowns, context managers
 - **Twitch Bot** ([src/twitch_bot.py](src/twitch_bot.py)) - EventSub integration, OAuth flow
 - **WebSocket** ([src/websocket.py](src/websocket.py)) - SocketIO event handlers
 - **Actions** ([src/actions.py](src/actions.py)) - Action registry (DRY)
+
+**C# Layer (BepInEx Mod):**
+- **GameController.cs** - Unity API interface (kill, lay, zoom, panels)
+- **ApiHandlers.cs** - HTTP request handlers
+- **HttpApi.cs** - HTTP server (localhost:5001)
+- **CommandQueue** - Thread-safe command queue (background → Unity thread)
 
 **Data Flow:**
 ```
@@ -146,35 +134,19 @@ Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager
                                                              ↓
                                             Overlay + Admin Panel (display)
                                                              ↓
-                                            Game Controller → xdotool
+                                                       Mod Client (HTTP)
                                                              ↓
-                                            The Bibites (auto-discovered window)
-```
-
-**Timer System (Elapsed-Time Based):**
-```python
-# Round starts:
-round_start_time = datetime.now()
-target_duration = get_timer_limit(ratios)  # 30-120s via entropy
-
-# Each tick:
-elapsed = now() - round_start_time
-time_remaining = max(0, target - elapsed)
-
-# New vote:
-target_duration = get_timer_limit(new_ratios)  # Target changes
-# time_remaining recalculates on next tick (always decreasing)
-
-# Expiry:
-if elapsed >= target_duration:
-    execute_winner()
+                                            BepInEx Mod API (localhost:5001)
+                                                             ↓
+                                            The Bibites (Unity game)
 ```
 
 **Design Patterns:**
 - **Server-authoritative:** Zero client-side state (timers, counters)
 - **Single source of truth:** Action registry, design tokens (CSS variables)
-- **Fail-fast validation:** Window discovery, vote validation, etc.
+- **Fail-fast validation:** Mod API connection, vote validation, window discovery
 - **DRY composition:** Templates use @includes, CSS uses custom properties
+- **Threading isolation:** HTTP (background) → CommandQueue → Unity (main thread)
 
 ---
 
@@ -190,15 +162,6 @@ python -m src.server
 # Terminal 2: Bot (optional, for Twitch integration)
 python -m src.twitch_bot --test  # 30s test
 python -m src.twitch_bot          # daemon
-```
-
-### Testing Vote Flow
-```bash
-# Admin panel (left sidebar):
-# Click "l+" → adds test vote
-# Click "k+" → adds test vote
-# Watch timer adjust, overlay update
-# Click "L" → force execute Lay (Insert keypress)
 ```
 
 ### File Locations
