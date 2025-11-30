@@ -93,6 +93,26 @@ namespace SelectionProtocol
                 {
                     _handlers.HandlePostPause(response);
                 }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/target/info")
+                {
+                    _handlers.HandleGetTargetInfo(response);
+                }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/target/kill")
+                {
+                    _handlers.HandleKillTarget(response);
+                }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/target/lay")
+                {
+                    _handlers.HandleLayTarget(request, response);
+                }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/world/zoom")
+                {
+                    _handlers.HandleZoom(request, response);
+                }
+                else if (request.HttpMethod == "POST" && request.Url.AbsolutePath == "/world/info_panel")
+                {
+                    _handlers.HandleInfoPanel(request, response);
+                }
                 else
                 {
                     _handlers.Handle404(response);

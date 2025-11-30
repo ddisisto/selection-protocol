@@ -44,9 +44,10 @@
     <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
-  <!-- Exclude decompiled game code from compilation (reference only) -->
+  <!-- Exclude decompiled game code and sketch files from compilation (reference only) -->
   <ItemGroup>
     <Compile Remove="decompiled/**/*.cs" />
+    <Compile Remove="IMPLEMENTATION_SKETCH.cs" />
   </ItemGroup>
 
 </Project>
