@@ -3,12 +3,10 @@ Game state tracker for Selection Protocol.
 
 Tracks stateful game commands with global cooldowns, reject counts, and metadata.
 Provides structured accept/reject responses for overlay feedback.
-Provides context managers for forced state control (lineage tagging, etc).
 """
 
 from datetime import datetime
 from contextlib import contextmanager
-from . import game_controller
 
 
 class CommandBase:
@@ -457,62 +455,6 @@ class InfoPanelGroup(CommandBase):
         })
         return state
 
-    @contextmanager
-    def override(self, panel):
-        """
-        Context manager for forcing panel view with restoration.
-
-        Determines keypresses needed but doesn't send them.
-        Yields (setup_keys, restore_fn) where restore_fn() returns restoration keys.
-
-        Args:
-            panel: Target panel ('1', '2', '3', '4', or '0')
-
-        Yields:
-            tuple: (list of setup keypresses, callable returning restore keypresses)
-
-        Example:
-            with info_panels.override('1') as (setup_keys, get_restore_keys):
-                # Send setup_keys via game_controller
-                # Do work...
-                # Send get_restore_keys() via game_controller
-        """
-        original = self.current
-
-        # Get setup keypresses (bypass cooldown with cause='system')
-        setup_keys = self._get_override_keys(panel)
-
-        # Closure for restoration
-        def get_restore_keys():
-            if original and original != panel:
-                return self._get_override_keys(original)
-            return []
-
-        yield (setup_keys, get_restore_keys)
-
-    def _get_override_keys(self, panel):
-        """
-        Get keypresses for panel override (system-level, bypass cooldown).
-
-        Args:
-            panel: Target panel value
-
-        Returns:
-            list: Keypresses to send (empty if already at target)
-        """
-        if self.current == panel:
-            return []  # Already at target
-
-        # Use execute() with cause='system' to bypass cooldown
-        result = self.execute(panel, user='SYSTEM', cause='system')
-        kp = result.get('keypress')
-
-        # Normalize to list
-        if isinstance(kp, list):
-            return kp
-        elif kp:
-            return [kp]
-        return []
 
 
 class GameState:
@@ -598,98 +540,3 @@ class GameState:
         if self.socketio:
             self.socketio.emit('game_state_update', self.get_state())
 
-    # ============================================================
-    # CONTEXT MANAGERS FOR FORCED STATE CONTROL
-    # ============================================================
-
-    @contextmanager
-    def paused(self, log_func=None):
-        """
-        Pause game, yield, unpause on exit.
-
-        Uses game_controller.io for keypresses.
-
-        Args:
-            log_func: Optional logging function
-
-        Yields:
-            None
-
-        Example:
-            with game_state.paused():
-                # Game is paused
-                # Do work...
-                pass
-            # Game unpaused automatically
-        """
-        with game_controller.io() as io:
-            io.keypress('space', log_func)
-
-        try:
-            yield
-        finally:
-            with game_controller.io() as io:
-                io.keypress('space', log_func)
-
-    @contextmanager
-    def panel_view(self, panel, log_func=None):
-        """
-        Force info panel view, restore on exit.
-
-        Uses InfoPanelGroup.override() for logic, sends keys via game_controller.
-        Bypasses cooldowns (system-level access).
-
-        Args:
-            panel: Target panel ('1', '2', '3', '4', or '0')
-            log_func: Optional logging function
-
-        Yields:
-            None
-
-        Example:
-            with game_state.panel_view('1'):
-                # Panel 1 is now active (forced)
-                # Do work...
-                pass
-            # Original panel restored automatically
-        """
-        with self.info_panels.override(panel) as (setup_keys, get_restore_keys):
-            # Send setup keypresses
-            if setup_keys:
-                with game_controller.io() as io:
-                    for key in setup_keys:
-                        io.keypress(key, log_func)
-
-            try:
-                yield
-            finally:
-                # Restore original state
-                restore_keys = get_restore_keys()
-                if restore_keys:
-                    with game_controller.io() as io:
-                        for key in restore_keys:
-                            io.keypress(key, log_func)
-
-    @contextmanager
-    def tagging_context(self, log_func=None):
-        """
-        Combined context for lineage tagging.
-
-        Pauses game and forces info panel '1' view.
-        Restores all state on exit.
-
-        Args:
-            log_func: Optional logging function
-
-        Yields:
-            None
-
-        Example:
-            with game_state.tagging_context():
-                with game_controller.io() as io:
-                    io.click(225, 225)
-                    # ... tagging sequence
-        """
-        with self.paused(log_func):
-            with self.panel_view('1', log_func):
-                yield
