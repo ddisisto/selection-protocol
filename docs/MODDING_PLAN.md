@@ -1,6 +1,6 @@
 # Modding Approach - Planning Doc
 
-**Status:** Exploratory - Proving viability
+**Status:** Active - Pause control implemented (#20), pattern established
 **Related:** Issue #2 (Architecture Decision)
 
 ---
@@ -106,23 +106,37 @@ pkill -f "The Bibites.exe"
 
 ## Code Organization
 
-**Monorepo (recommended):**
+**Monorepo - 4-file architecture:**
 ```
 selection-protocol/
 ├── src/              # Python server (existing)
-├── mod/              # C# BepInEx plugin (new)
-│   ├── Plugin.cs
-│   ├── HttpApi.cs
-│   └── *.csproj
+├── mod/              # C# BepInEx plugin
+│   ├── Plugin.cs           # BepInEx entry, command queue (81 lines)
+│   ├── HttpApi.cs          # HTTP routing layer (107 lines)
+│   ├── GameController.cs   # Unity game state bridge (79 lines)
+│   ├── ApiHandlers.cs      # Endpoint implementations (112 lines)
+│   ├── PluginInfo.cs       # Version constants (9 lines)
+│   ├── SelectionProtocol.csproj
+│   └── decompiled/         # Decompiled game code (gitignored)
 ├── build_mod.sh      # Compile + deploy automation
+├── decompile_dll.sh  # Extract game code for exploration
 └── docs/
     └── MODDING_PLAN.md (this file)
 ```
+
+**Architecture Philosophy:**
+- **Separation of concerns:** Each file <150 lines, single responsibility
+- **Plugin.cs:** BepInEx lifecycle, command queue (background → main thread)
+- **HttpApi.cs:** HTTP infrastructure only, routes to handlers
+- **GameController.cs:** Unity game state access, queues commands
+- **ApiHandlers.cs:** HTTP endpoint logic, uses ManualResetEvent for callbacks
+- **Scalable:** Easy to add endpoints without bloating any single file
 
 **Rationale:**
 - Single clone for contributors
 - Coordinated versioning (server ↔ mod API contract)
 - Git history shows full context
+- File size targets prevent complexity creep
 
 ---
 
@@ -181,6 +195,99 @@ grep -r "public static.*Instance" mod/decompiled/
 
 ---
 
+## Implementation Learnings
+
+### Threading Pattern (Proven Working)
+
+**Problem:** HttpListener runs on background thread, Unity API requires main thread.
+
+**Solution:** Command queue with ManualResetEvent for synchronous responses.
+
+```csharp
+// Plugin.cs - Main thread (Unity Update loop)
+private Queue<Action> _commandQueue = new Queue<Action>();
+private void Update() {
+    lock (_queueLock) {
+        while (_commandQueue.Count > 0) {
+            _commandQueue.Dequeue().Invoke();  // Execute on main thread
+        }
+    }
+}
+
+// ApiHandlers.cs - Background thread (HTTP request)
+var resetEvent = new ManualResetEvent(false);
+bool result = false;
+
+_gameController.GetPauseState(state => {
+    result = state;
+    resetEvent.Set();  // Signal completion
+});
+
+if (resetEvent.WaitOne(5000)) {  // Wait up to 5s
+    return result;
+}
+```
+
+**Key insights:**
+- Background thread enqueues command → Main thread executes → Callback fires → HTTP responds
+- ManualResetEvent blocks HTTP thread until main thread completes
+- 5s timeout prevents stuck requests
+- Exception handling in Update() prevents one bad command from breaking queue
+
+### Game Control: Source Parameter Pattern
+
+**Discovery:** `TimeController.TogglePauseGame(string source)` uses pause source stacking.
+
+**How it works:**
+```csharp
+public void TogglePauseGame(string source = "base", bool isUnpause = false)
+{
+    PauseSource pauseSource = Pauses.FirstOrDefault(p => p.Source == source);
+    if (pauseSource != null) {
+        // Source exists → remove it (unpause this source's contribution)
+        Pauses.Remove(pauseSource);
+    } else if (!isUnpause) {
+        // Source missing → add it (pause with this source)
+        Pauses.Add(new PauseSource { Source = source });
+    }
+}
+```
+
+**Critical insight:** Multiple pause sources can stack! Game paused if ANY source in list.
+
+**Example conflict scenario:**
+1. User hits spacebar → adds "base" source
+2. API calls with "selection-protocol" → adds second source
+3. Spacebar again → removes "base", game still paused ("selection-protocol" remains)
+4. API and spacebar now desynchronized, stuck pause state
+
+**Solution:** Use `source = "base"` to match spacebar's default behavior exactly.
+
+```csharp
+// Match spacebar - both control same pause source
+TimeController.Instance.TogglePauseGame("base");
+```
+
+**Extrapolation:** This "source" pattern likely extends to other game controls. When implementing new endpoints (speed, selection), check decompiled code for similar parameter patterns to avoid conflicts with built-in controls.
+
+### File Size Discipline
+
+**Target:** Each file <150 lines to prevent complexity creep.
+
+**Current status (Issue #20 complete):**
+- Plugin.cs: 81 lines ✅
+- HttpApi.cs: 107 lines ✅
+- GameController.cs: 79 lines ✅
+- ApiHandlers.cs: 112 lines ✅
+
+**Benefits proven:**
+- Easy to navigate (entire file fits on screen)
+- Clear responsibilities (no "god objects")
+- Adding pause control didn't bloat any file beyond target
+- Pattern scales: speed/selection/actions will follow same structure
+
+---
+
 ## Risk Assessment
 
 ### Acceptable Risks
@@ -234,20 +341,32 @@ grep -r "public static.*Instance" mod/decompiled/
 
 ---
 
-## Next Steps
+## Implementation Status
 
-**Phase 0: Viability PoC**
+**✅ Phase 0: Viability PoC (Issue #17)**
 - Install BepInEx in game directory
 - Create minimal "Hello World" plugin
 - Implement single HTTP endpoint: `GET /health`
 - Verify callable from Python server
-- **Decision gate:** If painful, we bail before deep integration
+- **Result:** ✅ SUCCESSFUL - BepInEx works on Linux/Proton
 
-**Future Phases (TBD):**
-- Expose game state (read-only)
-- Implement action control (pause, speed, K/L/X)
-- Lineage tagging via direct API
-- Deprecate xdotool
+**✅ Phase 1: Pause Control (Issue #20)**
+- Refactor to 4-file architecture
+- Implement command queue pattern (background → Unity main thread)
+- GET /game/pause - Read pause state
+- POST /game/pause - Toggle pause
+- **Result:** ✅ COMPLETE - Pattern proven, scales to future endpoints
+
+**🎯 Next Endpoints:**
+- Speed control (GET/POST /game/speed)
+- Organism selection (GET/POST /game/selection)
+- Action execution (K/L/X endpoints)
+
+**Future Work:**
+- Direct lineage tagging (replace xdotool clipboard hack)
+- Game event stream (births, deaths) → overlay
+- Observable game state (population, timer, etc.)
+- Deprecate xdotool completely
 
 ---
 
