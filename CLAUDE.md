@@ -16,24 +16,18 @@ Twitch streaming experiment where chat votes K/L/X (Kill/Lay/Extend) on organism
 
 ## Issue-Driven Workflow
 
-**Work management via GitHub Issues:**
+**All work starts with an issue. All commits reference an issue.**
+
+See @CONTRIBUTING.md for full workflow standards:
+- Issue creation principles (explanatory over prescriptive, scope boundaries)
+- Commit format (minimal, traceable)
+- Session flow (issue → implement → close)
+
+**Quick reference:**
 - Point at single issue to start session
 - Issue scope = session scope
-- Labels as system feedback (needs-discussion, blocked, ready, deferred)
-- Block early and often - create dependency chains, never work around
-
-**Creating good issues:**
-@.github/ISSUE_CREATION_GUIDE.md
-
-**Session flow:**
-1. `gh issue list` - See what's available
-2. Point at issue (any state: needs-discussion, blocked, ready)
-3. Assess state and branch:
-   - `needs-discussion` → Refine, break down, spec
-   - `blocked` → Work on blocker or create new dependency
-   - `ready` → Implement
-4. Reference issue in commits: `#N` or `Closes #N`
-5. Update issue with outcome (link commits/PRs)
+- Block early and often - create dependency chains
+- Commits: `Title (#N)` + optional context + `Closes #N`
 
 ---
 
@@ -78,23 +72,18 @@ Twitch streaming experiment where chat votes K/L/X (Kill/Lay/Extend) on organism
 - Example: Read multiple files, run multiple bash commands
 - Maximize efficiency, minimize round-trips
 
-**3. Commit Messages (Detailed & Structured)**
+**3. Commit Messages (Minimal & Traceable)**
 ```
-Title: What changed (imperative, 50 chars)
+Brief description of change (#N)
 
-**Problem:** What issue this solves (reference #N)
-**Root Cause:** Why it happened (with file:line references)
-**Solution:** How we fixed it
-**Implementation:** Key changes (bullet points)
-**Testing:** What was verified
+[Optional 1-2 sentence context if title unclear]
 
-Include code snippets showing before/after when useful.
-
-Closes #N (if applicable)
-
-🔥 Generated with [Claude Code](https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>
+Closes #N (if this commit completes the issue)
 ```
+
+**Rationale:** Code details belong in code, discussion in issues, commits link the two.
+
+See @CONTRIBUTING.md for full commit standards and examples.
 
 **4. Testing Approach**
 - Write code first
@@ -226,8 +215,8 @@ python -m src.twitch_bot          # daemon
 - Start with simplest working solution, refactor when duplication obvious
 - Test manually before abstracting
 - TodoWrite for complex tasks, parallel tool use for efficiency
-- Detailed commit messages with reasoning
-- Document decisions when made (issues, commit messages)
+- Minimal commit messages linked to issues (reasoning in issues, not commits)
+- Document decisions when made (issues, not commit bodies)
 - Fail-fast validation > silent fallbacks
 
 **Avoid:**
