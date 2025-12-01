@@ -2,149 +2,224 @@
 
 **Democratic Evolution Experiment**
 
-> Where democracy meets natural selection through artificial life.
+> Where democracy meets evolution through artificial life.
+
+---
 
 ## What Is This?
 
-Selection Protocol is a Twitch streaming experiment where chat votes every ~60 seconds on the fate of individual organisms in [The Bibites](https://thebibites.com) artificial life simulation:
+Twitch chat controls evolution.
 
-- **K** (Kill) - Execute current organism
-- **L** (Lay) - Force reproduction
-- **X** (Extend) - Keep watching
+The stream runs [The Bibites](https://thebibites.com) - an artificial life simulation where organisms evolve, compete, and reproduce. Chat votes to kill or force reproduction on whatever organism is currently on screen.
 
-**The Hook:** Winning L voters claim lineage naming rights. Their username tags the parent, inheriting to all descendants through the game's built-in genetics system.
+But here's the hook: **whoever votes to reproduce first gets to name the lineage**. Their username tags the parent and inherits to all descendants through the game's genetics system.
 
-## Current Status
+It's democracy meets dynasty building. Your lineage versus theirs. Compete for naming rights, watch your bloodline spread, see your dynasty dominate the world - or get voted extinct.
 
-**✅ Phase 1 Complete:**
-- Overlay server (Flask + SocketIO) with admin panel
-- Keypress automation (xdotool → The Bibites)
-- OAuth authorization code flow (user access tokens)
-- Token caching and refresh logic
-- TwitchIO EventSub bot (receives chat messages, parses commands)
-- Vote system (k/l/x) with first-L claimant logic
-- Dynamic timer (30-120s, entropy-based, elapsed-time tracking)
-- Automated vote execution (timer expires → winner executes)
-- Game commands (+/- zoom, 0-4 info panels)
-- Self-regulating cooldown system (distance-based, prevents extremes)
-- SocketIO integration (bot ↔ Flask ↔ vote_manager ↔ game_state)
-- Window auto-discovery (fail-fast validation)
-- Vote display in overlay (real-time counts, timer, first-L claimant)
-- Chat announcements (round start/end, outcomes)
+Evolution by collective will.
 
-**✅ Phase 2 Core:**
-- **Lineage tagging system** - First L voter's username tags parent organism
-  - Automated sequence: pause → click tag field → verify → paste → confirm
-  - Clipboard verification (stuffing trick ensures field read, not clipboard)
-  - Context managers for game state control (pause, panel override)
-  - Exclusive IO pattern prevents concurrent access
-  - Fail-open: tag errors logged but don't block L execution
-- **Overlay redesign** - 3-column layout with game state widgets
-  - Command log with aging animation and real-time vote tracking
-  - Info panel 2x2 grid with active highlighting
-  - Zoom widget showing distance + directional cooldowns
-  - Full-width footer ticker for round lifecycle events
+---
 
-**🚧 Phase 2 Remaining:**
-- [Overlay functionality improvements](https://github.com/ddisisto/selection-protocol/issues/6) - Edge cases, missing data displays
-- [Game integration reliability](https://github.com/ddisisto/selection-protocol/issues/2) - Architecture decision (automation vs modding)
-  - Blocked issues: [#3 Timing](https://github.com/ddisisto/selection-protocol/issues/3), [#4 Observable state](https://github.com/ddisisto/selection-protocol/issues/4), [#5 Input focus](https://github.com/ddisisto/selection-protocol/issues/5)
+## How Does It Work?
 
-## Quick Start
+The game runs locally with a custom BepInEx mod that exposes direct control over The Bibites. The gameplay is streamed to Twitch with an overlay showing current votes.
 
-```bash
-# Clone and setup
-git clone <repo-url>
-cd selection-protocol
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+Viewers type commands in chat to vote. A Twitch bot receives messages via EventSub and sends votes to a Flask server. The server tracks votes, determines winners, and calls the mod's HTTP API to execute actions in the game.
 
-# 1. Run overlay server (admin panel + OBS source)
-python -m src.server
-# → http://localhost:5000
+The first person to vote for reproduction claims naming rights. When reproduction wins, the mod tags the organism with that viewer's username before forcing it to lay an egg. The tag inherits to all offspring through the game's genetics system.
 
-# 2. Configure Twitch OAuth (first time only)
-cp config.yaml.example config.yaml
-# Edit config.yaml with your Twitch app credentials from:
-# https://dev.twitch.tv/console/apps
+Dynasties emerge. Lineages spread or get voted extinct. Democracy shapes evolution in real time.
 
-# 3. Run Twitch bot (connects to Flask, then Twitch EventSub)
-python -m src.twitch_bot --test  # 30s test mode
-python -m src.twitch_bot          # daemon mode (runs forever)
-# Browser opens for authorization on first run
-# Token cached to .twitch_token for future runs
-
-# Bot startup sequence:
-# 1. Connects to Flask (exits if Flask not running)
-# 2. Fetches enabled actions (k/l/x)
-# 3. Connects to Twitch EventSub
-# 4. Announces to chat
-# 5. Receives votes → sends to Flask → vote_manager tracks them
-```
-
-**Troubleshooting:**
-- **First run:** Browser opens automatically for OAuth authorization (one-time setup)
-- **Token expiry:** Handled automatically via refresh mechanism
-- **"Token user mismatch" error:** Log out of Twitch in browser, log in as bot account (not channel owner), delete `.twitch_token`, re-run bot
-- **Other issues:** Check `config.yaml` has correct `client_id`/`client_secret` from https://dev.twitch.tv/console/apps
-
-## Documentation
-
-- **[docs/](docs/)** - Voting rules, chat UX specs, setup guides
-
-## The Mechanics
-
-### One person, one vote
-Latest vote replaces previous. No weight manipulation.
-
-### First L gets naming rights
-Until they switch away. Creates strategic tension.
-
-### Majority wins, ties default to X
-K or L needs >33% AND majority. Ties result in no action.
-
-### Democracy at any scale
-Works with 1 viewer or 1000. Empty stream = autonomous evolution.
-
-## Philosophy
-
-**Process Over Outcomes** - Build systematic methodologies, not one-off analyses.
-
-**Scientific Experiment** - Depersonalized presentation, terminal aesthetic, transparent mechanics.
-
-**Let Them Find It** - Organic discovery, word of mouth, build something worth discovering.
-
-## License
-
-TBD
+---
 
 ## Architecture
 
 ```
-Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager → Overlay
+Twitch Chat → EventSub Bot → SocketIO → Flask Server → Vote Manager
                                               ↓
-                                         Admin Panel → xdotool → The Bibites
+                                        Mod Client (HTTP)
+                                              ↓
+                                   BepInEx Mod (localhost:5001)
+                                              ↓
+                                      The Bibites (Unity)
 ```
 
-**Key Components:**
-- **Action Registry** ([src/actions.py](src/actions.py)) - Vote command definitions (k/l/x)
-- **Game Commands** ([src/game_commands.py](src/game_commands.py)) - Direct commands (+/-/0-4)
-- **Vote Manager** ([src/vote_manager.py](src/vote_manager.py)) - Vote tracking, timer, execution, lineage tagging
-- **Game State** ([src/game_state.py](src/game_state.py)) - Command cooldowns, context managers for forced state
-- **EventSub Bot** ([src/twitch_bot.py](src/twitch_bot.py)) - Twitch chat integration
-- **Flask Server** ([src/server.py](src/server.py)) - Overlay + admin panel + SocketIO
-- **Game Controller** ([src/game_controller.py](src/game_controller.py)) - Exclusive IO, xdotool automation, lineage tagging
+### Components
+
+**BepInEx Mod** ([mod/](mod/))
+- C# plugin for The Bibites (Unity game)
+- HTTP API on localhost:5001
+- Direct game state access (kill, lay, tag, pause, zoom, panels)
+- Eliminates UI automation, clipboard tricks, timing hacks
+
+**Flask Server** ([src/server.py](src/server.py))
+- Overlay + admin panel on http://localhost:5000
+- Vote tracking, timer logic, action execution
+- SocketIO broadcasts to overlay (real-time updates)
+- Calls mod API for game actions
+
+**Twitch Bot** ([src/twitch_bot.py](src/twitch_bot.py))
+- EventSub integration (receives chat messages)
+- OAuth flow for user access tokens
+- Parses K/L/X votes, sends to Flask via SocketIO
+- Chat announcements (round start/end, outcomes)
+
+**Key Modules:**
+- [src/vote_manager.py](src/vote_manager.py) - Vote tracking, timer, execution, lineage tagging
+- [src/mod_client.py](src/mod_client.py) - HTTP client for mod API
+- [src/game_state.py](src/game_state.py) - Command cooldowns, state tracking
+- [src/actions.py](src/actions.py) - Action registry (DRY)
+- [src/websocket.py](src/websocket.py) - SocketIO event handlers
+
+### Data Flow
+
+1. Chat votes K/L/X
+2. Bot → SocketIO → Flask → Vote Manager tracks votes
+3. Timer expires → Vote Manager determines winner
+4. Winner executes:
+   - K → `mod.kill_target()` → Mod API → Game kills organism
+   - L → `mod.lay_target(tag=username)` → Mod API → Game tags + lays egg
+   - X → No action
+5. Round end broadcast → Overlay updates
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- [The Bibites](https://thebibites.com) (Steam or itch.io)
+- BepInEx installed in game directory
+- Python 3.10+
+
+### 1. Build and Install Mod
+
+```bash
+# Clone repo
+git clone <repo-url>
+cd selection-protocol
+
+# Install ILSpy (one-time, for exploring game code)
+dotnet tool install -g ilspycmd
+
+# Build mod
+./build_mod.sh
+# → Deploys to ~/.steam/steam/steamapps/common/The Bibites/BepInEx/plugins/
+
+# Start game, verify mod loaded
+# Check BepInEx log: cat ~/.steam/.../BepInEx/LogOutput.log
+# Should see: [Info   :SelectionProtocol] Plugin loaded
+# Should see: [Info   :SelectionProtocol] HTTP API started on http://localhost:5001
+
+# Test mod API
+curl http://localhost:5001/health
+# → {"status":"ok"}
+```
+
+### 2. Run Overlay Server
+
+```bash
+# Setup Python environment
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Run server (requires game + mod running)
+python -m src.server
+# → http://localhost:5000
+# → Admin panel: http://localhost:5000/admin
+# → Overlay (OBS source): http://localhost:5000/overlay
+```
+
+### 3. Run Twitch Bot (Optional)
+
+```bash
+# One-time: Configure Twitch OAuth
+cp config.yaml.example config.yaml
+# Edit config.yaml with your Twitch app credentials from:
+# https://dev.twitch.tv/console/apps
+
+# Run bot (connects to Flask, then Twitch EventSub)
+python -m src.twitch_bot --test  # 30s test mode
+python -m src.twitch_bot          # daemon mode (runs forever)
+
+# Browser opens for authorization on first run
+# Token cached to .twitch_token for future runs
+```
+
+**Troubleshooting:**
+- **"Token user mismatch":** Log out of Twitch in browser, log in as bot account (not channel owner), delete `.twitch_token`, re-run bot
+- **Mod API connection failed:** Ensure game is running with mod loaded (check BepInEx log)
+- **Other issues:** Check `config.yaml` has correct `client_id`/`client_secret`
+
+---
+
+## Development
+
+### Workflow
+
+All work starts with an issue. All commits reference an issue.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Issue creation principles (explanatory over prescriptive, scope boundaries)
+- Commit format (minimal, traceable)
+- Session flow (issue → implement → close)
+
+See [CLAUDE.md](CLAUDE.md) for:
+- Project methodology (fail-fast, DRY, clean code)
+- Work patterns (TodoWrite, parallel tools, testing approach)
+- Architecture patterns (action registry, design tokens, server-authoritative)
+
+### Modding
+
+See [docs/MODDING.md](docs/MODDING.md) for:
+- Threading pattern (background → Unity main thread)
+- Source parameter pattern (pause state management)
+- Decompile/build workflow
+- Game UI integration (use existing methods, don't reimplement)
+
+### Testing
+
+Manual testing during development (server hot-reloads, user tests while game runs). No premature abstraction - wait for patterns to emerge.
+
+---
+
+## Documentation
+
+- [docs/VOTING_RULES.md](docs/VOTING_RULES.md) - Vote mechanics, tie-breaking, edge cases
+- [docs/CHAT_UX.md](docs/CHAT_UX.md) - Chat announcements, formatting, timing
+- [docs/MODDING.md](docs/MODDING.md) - BepInEx mod development patterns
+- [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md) - Agent-driven workflow (optional pattern)
+- [docs/archive/](docs/archive/) - Historical planning docs, handover notes
+
+---
+
+## Philosophy
+
+**Process Over Outcomes**
+Build systematic methodologies, not one-off analyses.
+
+**Scientific Experiment**
+Depersonalized presentation, terminal aesthetic, transparent mechanics.
+
+**Let Them Find It**
+Organic discovery, word of mouth. Build something worth discovering.
+
+**Fail-Fast**
+Strict validation, clear error messages. No fallbacks to hardcoded values. Better to crash with explanation than silently do wrong thing.
+
+**Democracy at Any Scale**
+1 viewer or 1000. System works regardless.
+
+---
 
 ## Credits
 
-Concept and implementation: Daniel + Claude (Sonnet 4.5)
-Game: [The Bibites](https://thebibites.com) by Leo Caussan
+**Concept and Implementation:** Daniel + Claude (Sonnet 4.5)
+
+**Game:** [The Bibites](https://thebibites.com) by Leo Caussan
 
 ---
 
 > DEMOCRACY ONLINE
-> LINEAGE TAGGING: OPERATIONAL
-> SELECTION PROTOCOL: ACTIVE
-
-🔥
+> SELECTION PROTOCOL: OPERATIONAL
