@@ -30,7 +30,7 @@ Selection Protocol is a Twitch streaming experiment where chat votes every ~60 s
 - SocketIO integration (bot ↔ Flask ↔ vote_manager ↔ game_state)
 - Window auto-discovery (fail-fast validation)
 - Vote display in overlay (real-time counts, timer, first-L claimant)
-- Chat announcements (round start/end, outcomes, colored by context)
+- Chat announcements (round start/end, outcomes)
 
 **✅ Phase 2 Core:**
 - **Lineage tagging system** - First L voter's username tags parent organism

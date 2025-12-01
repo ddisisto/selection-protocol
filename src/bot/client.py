@@ -25,7 +25,7 @@ class ChatInputBot(commands.AutoBot):
     - Parse single-char commands from chat (k/l/x, +/-/0-4)
     - Forward parsed input to server via SocketIO
     - Handle server events (round_start, round_end)
-    - Send colored announcements to chat
+    - Send announcements to chat
     """
 
     def __init__(self, client_id, client_secret, bot_id, owner_id, channel_id, access_token, bot_username, flask_url="http://localhost:5000"):
@@ -177,22 +177,18 @@ class ChatInputBot(commands.AutoBot):
             print("=" * 60)
             sys.exit(1)
 
-    async def _send_chat_message(self, message, color='blue'):
+    async def _send_chat_message(self, message):
         """
-        Send a message to Twitch chat with colored announcement.
+        Send a message to Twitch chat with announcement.
 
         Args:
             message: Text to send to chat
-            color: Announcement color ('blue', 'green', or 'orange')
-                   - Blue: default/neutral
-                   - Green: L-related (lay, reproduce)
-                   - Orange: K-related (kill)
 
         Returns:
             bool: True if sent successfully, False otherwise
         """
-        # Prefix message with colored announcement command
-        colored_message = f"/announce{color} {message}"
+        # Prefix message with announcement command
+        colored_message = f"/announce {message}"
 
         url = "https://api.twitch.tv/helix/chat/messages"
 
@@ -276,11 +272,8 @@ class ChatInputBot(commands.AutoBot):
             vote = data.get('vote', '').upper()
             timer = data.get('timer_limit', 30)
 
-            # Color based on initial vote: K=orange, L=green, X=blue
-            color = 'orange' if vote == 'K' else ('green' if vote == 'L' else 'blue')
-
             message = f"Voting opened by @{username}: {vote}, {timer}s to have your say: K,L,X"
-            success = await self._send_chat_message(message, color=color)
+            success = await self._send_chat_message(message)
 
             if success:
                 print(f"✓ Round start announced: {username} voted {vote}")
@@ -295,9 +288,6 @@ class ChatInputBot(commands.AutoBot):
             l_votes = data.get('l_votes', 0)
             x_votes = data.get('x_votes', 0)
             claimant = data.get('first_l_claimant')
-
-            # Color based on winner: K=orange, L=green, X=blue
-            color = 'orange' if winner == 'k' else ('green' if winner == 'l' else 'blue')
 
             # Build vote count string (omit zeros)
             vote_parts = []
@@ -318,7 +308,7 @@ class ChatInputBot(commands.AutoBot):
             else:  # x wins
                 message = f"X wins (tie/no action) • {vote_str} • Round reset"
 
-            success = await self._send_chat_message(message, color=color)
+            success = await self._send_chat_message(message)
 
             if success:
                 print(f"✓ Round end announced: {winner.upper()} wins")
@@ -426,12 +416,12 @@ class ChatInputBot(commands.AutoBot):
         sys.exit(1)
 
     async def _send_startup_announcement(self):
-        """Send startup message to chat (blue announcement)."""
+        """Send startup message to chat."""
         # Wait a moment for EventSub to be fully ready
         await asyncio.sleep(2)
 
         message = "Selection Protocol online. Vote: k (kill) | l (lay) | x (extend) • Commands: +/- (zoom) | 0-4 (info panels, 0=hide)"
-        success = await self._send_chat_message(message, color='blue')
+        success = await self._send_chat_message(message)
 
         if success:
             print("✓ Startup announcement sent to chat")
