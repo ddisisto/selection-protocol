@@ -36,6 +36,10 @@
       <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/The Bibites_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(HOME)/.steam/steam/steamapps/common/The Bibites/The Bibites_Data/Managed/Unity.TextMeshPro.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Build Output Configuration -->

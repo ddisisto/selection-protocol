@@ -172,6 +172,8 @@ namespace SelectionProtocol
 
         /// <summary>
         /// Kill the current target.
+        /// Uses game's BibiteStatsPanel.KillCurrentBibite() for proper behavior
+        /// (ExplodeToMeat if already dead, handles eggs via hatching.Abort()).
         /// </summary>
         /// <param name="callback">Called with action result on main thread</param>
         public void KillTarget(Action<ActionResult> callback)
@@ -187,25 +189,10 @@ namespace SelectionProtocol
                     return;
                 }
 
-                BibiteBody body = target.GetComponent<BibiteBody>();
-                if (body == null)
-                {
-                    Plugin.Logger.LogWarning("KillTarget: Target is not a Bibite");
-                    callback(ActionResult.Failure("kill", "Target is not a Bibite"));
-                    return;
-                }
-
-                if (body.dead)
-                {
-                    Plugin.Logger.LogWarning("KillTarget: Target already dead");
-                    callback(ActionResult.Failure("kill", "Target already dead"));
-                    return;
-                }
-
                 try
                 {
-                    body.Die();
-                    Plugin.Logger.LogInfo($"KillTarget: Killed bibite {target.GetInstanceID()}");
+                    GUIManager.Instance.StatsPanel.KillCurrentBibite();
+                    Plugin.Logger.LogInfo($"KillTarget: Executed kill via StatsPanel");
                     callback(ActionResult.Success("kill"));
                 }
                 catch (Exception ex)
@@ -218,6 +205,8 @@ namespace SelectionProtocol
 
         /// <summary>
         /// Force target to lay an egg with specified lineage tag.
+        /// Uses game's BibiteStatsPanel methods for proper TagsManager integration
+        /// and UI refresh. No validation - divine intervention works on any target.
         /// </summary>
         /// <param name="lineageTag">Tag to assign to parent before reproduction</param>
         /// <param name="callback">Called with action result on main thread</param>
@@ -234,29 +223,15 @@ namespace SelectionProtocol
                     return;
                 }
 
-                BibiteBody body = target.GetComponent<BibiteBody>();
-                if (body == null)
-                {
-                    Plugin.Logger.LogWarning("LayTarget: Target is not a Bibite");
-                    callback(ActionResult.Failure("lay", "Target is not a Bibite"));
-                    return;
-                }
-
-                if (!CanBibiteReproduce(body))
-                {
-                    Plugin.Logger.LogWarning($"LayTarget: Cannot reproduce (dead={body.dead}, mature={body.eggLayer?.isMature})");
-                    callback(ActionResult.Failure("lay", "Target cannot reproduce (dead or immature)"));
-                    return;
-                }
-
                 try
                 {
-                    // Set lineage tag (direct field access)
-                    body.gene.speciesTag = lineageTag;
+                    // Set lineage tag via StatsPanel (integrates with TagsManager, refreshes UI)
+                    GUIManager.Instance.StatsPanel.tagInputField.text = lineageTag;
+                    GUIManager.Instance.StatsPanel.UpdateSpeciesTag();
                     Plugin.Logger.LogInfo($"LayTarget: Set lineage tag to '{lineageTag}'");
 
-                    // Execute reproduction
-                    body.eggLayer.LayEgg();
+                    // Execute reproduction via StatsPanel
+                    GUIManager.Instance.StatsPanel.LayEggFromCurrentBibite();
                     Plugin.Logger.LogInfo("LayTarget: Reproduction executed");
 
                     callback(ActionResult.Success("lay"));
